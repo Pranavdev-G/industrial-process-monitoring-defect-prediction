@@ -6,7 +6,13 @@ from data_analysis_page import DataAnalysisPage
 class Sidebar(tk.Frame):
 
     def __init__(self, parent, controller):
-        super().__init__(parent, bg="#1e293b", width=260)
+        super().__init__(
+    parent,
+    bg="#1e293b",
+    width=260,
+    highlightbackground="#22d3ee",
+    highlightthickness=2
+)
 
         self.controller = controller
         self.pack(side="left", fill="y")
