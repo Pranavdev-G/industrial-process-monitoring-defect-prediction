@@ -1,9 +1,9 @@
 import tkinter as tk
 from tkinter import ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from analytics.regression_models import predict_defects
+from analytics.clustering import perform_clustering
 
-class PredictionPage(tk.Frame):
+class ClusteringPage(tk.Frame):
 
     def __init__(self, parent, controller):
         super().__init__(parent, bg="#ffffff")
@@ -13,7 +13,7 @@ class PredictionPage(tk.Frame):
 
         title = tk.Label(
             self,
-            text="Defect Prediction",
+            text="Data Clustering",
             font=("Roboto", 24, "bold"),
             bg="#ffffff",
             fg="#1e293b"
@@ -24,24 +24,24 @@ class PredictionPage(tk.Frame):
         controls_frame = tk.Frame(self, bg="#ffffff", height=50)
         controls_frame.pack(fill="x", pady=10)
 
-        tk.Label(controls_frame, text="Target Column:", bg="#ffffff", fg="#1e293b").pack(side="left", padx=20)
-        self.target_var = tk.StringVar()
-        self.target_dropdown = ttk.Combobox(controls_frame, textvariable=self.target_var, state="readonly")
-        self.target_dropdown.pack(side="left", padx=10)
+        tk.Label(controls_frame, text="Number of Clusters:", bg="#ffffff", fg="#1e293b").pack(side="left", padx=20)
+        self.n_clusters_var = tk.IntVar(value=3)
+        self.n_clusters_spin = tk.Spinbox(controls_frame, from_=2, to=10, textvariable=self.n_clusters_var, width=5)
+        self.n_clusters_spin.pack(side="left", padx=10)
 
         run_btn = tk.Button(
             controls_frame,
-            text="Run Prediction",
+            text="Run Clustering",
             bg="#22d3ee",
             fg="#1e293b",
-            command=self.run_prediction
+            command=self.run_clustering
         )
         run_btn.pack(side="right", padx=20)
 
         self.output_frame = tk.Frame(self, bg="#ffffff")
         self.output_frame.pack(fill="both", expand=True)
 
-    def run_prediction(self):
+    def run_clustering(self):
         for widget in self.output_frame.winfo_children():
             widget.destroy()
         self.canvas_refs = []
@@ -59,13 +59,11 @@ class PredictionPage(tk.Frame):
             msg.pack(pady=20)
             return
 
-        target_col = self.target_var.get()
-        if not target_col:
-            target_col = None  # Auto-detect
+        n_clusters = self.n_clusters_var.get()
 
-        accuracy, fig, info = predict_defects(df, target_col)
+        clusters, centroids, fig, info = perform_clustering(df, n_clusters)
 
-        if accuracy is None:
+        if clusters is None:
             msg = tk.Label(
                 self.output_frame,
                 text=info,
@@ -79,29 +77,32 @@ class PredictionPage(tk.Frame):
         # Results
         result_label = tk.Label(
             self.output_frame,
-            text=f"Prediction Results\n{info}",
+            text=f"Clustering Results\n{info}",
             bg="#ffffff",
             fg="#22d3ee",
             font=("Roboto", 16, "bold")
         )
         result_label.pack(pady=10)
 
-        # Confusion Matrix Plot
+        # Cluster Plot
         if fig:
             canvas = FigureCanvasTkAgg(fig, self.output_frame)
             canvas.draw()
             canvas.get_tk_widget().pack(fill="both", expand=True, padx=20, pady=10)
             self.canvas_refs.append(canvas)
 
-    def tkraise(self):
-        super().tkraise()
-        # Update dropdown when page is shown
-        if self.controller.dataset is not None:
-            columns = self.controller.dataset.columns.tolist()
-            self.target_dropdown['values'] = columns
-            # Try to auto-select target
-            possible_targets = [col for col in columns if 'defect' in col.lower() or 'target' in col.lower()]
-            if possible_targets:
-                self.target_var.set(possible_targets[0])
-            elif columns:
-                self.target_var.set(columns[-1])  # Last column as default
+        # Cluster sizes
+        from collections import Counter
+        cluster_counts = Counter(clusters)
+        sizes_text = "Cluster Sizes:\n" + "\n".join([f"Cluster {i}: {count} points" for i, count in cluster_counts.items()])
+
+        sizes_label = tk.Label(
+            self.output_frame,
+            text=sizes_text,
+            bg="#f8fafc",
+            fg="#0f172a",
+            font=("Courier", 10),
+            justify="left",
+            anchor="w"
+        )
+        sizes_label.pack(fill="x", padx=20, pady=10)
