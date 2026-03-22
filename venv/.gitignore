@@ -1,3 +1,11 @@
+# create .gitignore in your project root
 __pycache__/
 *.pyc
 .venv/
+venv/
+env/
+*.joblib
+*.pkl
+*.log
+*.db
+.env
