@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Industrial Process Monitoring</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        .cyan-highlight { color: #22d3ee; }
+    </style>
+</head>
+
+<body class="bg-white text-gray-800 min-h-screen overflow-y-auto">
+
+<header class="bg-gray-900 text-white py-6 shadow-lg sticky top-0 z-50">
+    <div class="container mx-auto px-4">
+        <h1 class="text-3xl font-bold">Industrial Process Monitoring</h1>
+        <p class="text-gray-400">College Dashboard</p>
+    </div>
+</header>
+
+<main class="container mx-auto px-4 py-8 space-y-10">
+
+<!-- Upload -->
+<section class="bg-gray-100 p-6 rounded border">
+    <h2 class="text-xl font-semibold mb-4">Upload Dataset</h2>
+
+    <form action="/upload" method="post" enctype="multipart/form-data" class="flex gap-4 flex-wrap">
+
+        <div class="flex-1 min-w-[250px]">
+            <label class="block text-sm mb-1">Upload CSV</label>
+            <input type="file" name="file" required
+                class="block w-full border p-2 rounded">
+        </div>
+
+        <button class="bg-cyan-500 text-white px-4 py-2 rounded">Upload</button>
+    </form>
+
+    <p class="mt-2">{{ message }}</p>
+</section>
+
+{% if has_data %}
+
+<!-- KPI -->
+<section>
+    <h2 class="text-2xl font-bold mb-4 cyan-highlight">Dashboard</h2>
+
+    <div class="grid md:grid-cols-3 gap-4">
+        <div class="bg-cyan-500 text-white p-6 rounded">Rows: {{ rows }}</div>
+        <div class="bg-cyan-400 text-white p-6 rounded">Columns: {{ columns }}</div>
+        <div class="bg-cyan-300 p-6 rounded">Missing: {{ missing }}</div>
+    </div>
+</section>
+
+<!-- Table -->
+<section class="bg-white border p-4 rounded overflow-x-auto">
+    <h3 class="mb-2 font-semibold">Preview</h3>
+
+    <table class="w-full text-sm">
+        <thead>
+            <tr>
+                {% for h in headers %}
+                <th class="border px-2">{{ h }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in preview %}
+            <tr>
+                {% for h in headers %}
+                <td class="border px-2">{{ row[h] }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<!-- Charts -->
+{% if numeric_col %}
+<section class="grid md:grid-cols-2 gap-6">
+    <div class="bg-white p-4 rounded shadow">
+        <h3>Line Chart</h3>
+        <canvas id="lineChart"></canvas>
+    </div>
+
+    <div class="bg-white p-4 rounded shadow">
+        <h3>Histogram</h3>
+        <canvas id="histChart"></canvas>
+    </div>
+</section>
+{% endif %}
+
+<!-- SPC -->
+{% if numeric_col %}
+<section class="bg-white p-6 rounded shadow">
+    <h3>SPC</h3>
+    <p>Mean: {{ spc_mean }} | Std: {{ spc_std }}</p>
+    <canvas id="spcChart"></canvas>
+</section>
+{% endif %}
+
+<!-- ML -->
+<section class="bg-white p-6 rounded shadow">
+    <h3>Machine Learning</h3>
+    <p>{{ ml_message }}</p>
+    {% if ml_accuracy %}
+    <p class="text-green-600">Accuracy: {{ ml_accuracy }}%</p>
+    {% endif %}
+</section>
+
+<!-- Clustering -->
+<section class="bg-white p-6 rounded shadow">
+    <h3>Clustering</h3>
+    <p>{{ cluster_message }}</p>
+</section>
+
+<!-- 🔥 NEW: Correlation -->
+<section class="bg-white p-6 rounded shadow">
+    <h3>Correlation Matrix</h3>
+    {% if corr_matrix %}
+    <table class="border text-sm">
+        {% for row in corr_matrix %}
+        <tr>
+            {% for val in row %}
+            <td class="border px-2">{{ val }}</td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p>No data</p>
+    {% endif %}
+</section>
+
+<!-- 🔥 NEW: Linear Regression -->
+<section class="bg-white p-6 rounded shadow">
+    <h3>Linear Regression</h3>
+    <p>{{ linreg_message }}</p>
+    {% if linreg_score %}
+    <p class="text-green-600">R² Score: {{ linreg_score }}</p>
+    {% endif %}
+</section>
+
+<!-- 🔥 NEW: PCA -->
+<section class="bg-white p-6 rounded shadow">
+    <h3>PCA</h3>
+    <p>{{ pca_message }}</p>
+</section>
+
+{% endif %}
+
+</main>
+
+<!-- Charts -->
+{% if has_data and numeric_col %}
+<script>
+const lineData = JSON.parse('{{ line_data | tojson | safe }}');
+new Chart(document.getElementById('lineChart'), {
+    type: 'line',
+    data: { labels: lineData.map((_,i)=>i), datasets:[{data: lineData}] }
+});
+
+const histData = JSON.parse('{{ hist_data | tojson | safe }}');
+new Chart(document.getElementById('histChart'), {
+    type: 'bar',
+    data: { labels: histData.map((_,i)=>i), datasets:[{data: histData}] }
+});
+
+const spc = JSON.parse('{{ spc_data | tojson | safe }}');
+const ucl = JSON.parse('{{ spc_ucl | tojson | safe }}');
+const lcl = JSON.parse('{{ spc_lcl | tojson | safe }}');
+const mean = JSON.parse('{{ spc_mean | tojson | safe }}');
+
+new Chart(document.getElementById('spcChart'), {
+    type: 'line',
+    data: {
+        labels: spc.map((_,i)=>i),
+        datasets: [
+            {label:'data', data: spc},
+            {label:'ucl', data: spc.map(()=>ucl)},
+            {label:'lcl', data: spc.map(()=>lcl)},
+            {label:'mean', data: spc.map(()=>mean)}
+        ]
+    }
+});
+</script>
+{% endif %}
+
+</body>
+</html>
