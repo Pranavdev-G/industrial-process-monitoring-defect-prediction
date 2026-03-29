@@ -378,66 +378,106 @@
 
         // Upload file
         async function uploadFile(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+    const file = event.target.files[0];
+    if (!file) return;
 
-            const formData = new FormData();
-            formData.append('file', file);
+    const formData = new FormData();
+    formData.append("file", file);
 
-            try {
-                const response = await fetch(`${API_BASE}/upload`, {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await response.json();
+    document.getElementById("upload-status").innerHTML = "Uploading...";
 
-                if (data.success) {
-                    document.getElementById('upload-status').innerHTML = 
-                        `<div class="bg-green-100 text-green-800 p-3 rounded-lg">✅ ${data.message}</div>`;
-                    document.getElementById('data-preview').innerHTML = 
-                        `<h3 class="font-bold mb-2">Data Preview (${data.shape[0]} rows × ${data.shape[1]} columns)</h3>` +
-                        createTable(data.preview, data.columns);
-                } else {
-                    document.getElementById('upload-status').innerHTML = 
-                        `<div class="bg-red-100 text-red-800 p-3 rounded-lg">❌ ${data.error}</div>`;
-                }
-            } catch (error) {
-                document.getElementById('upload-status').innerHTML = 
-                    `<div class="bg-red-100 text-red-800 p-3 rounded-lg">❌ Upload failed: ${error.message}</div>`;
-            }
+    try {
+        const response = await fetch("/upload", {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            document.getElementById("upload-status").innerHTML =
+                `<p class="text-green-600">File uploaded successfully</p>`;
+
+            loadOverview();
+        } else {
+            document.getElementById("upload-status").innerHTML =
+                `<p class="text-red-600">${data.error}</p>`;
         }
+
+    } catch (err) {
+        document.getElementById("upload-status").innerHTML =
+            `<p class="text-red-600">Upload failed</p>`;
+    }
+}
 
         // Problem Definition
-        async function loadProblem() {
-            const data = await fetchData('/problem');
-            if (data) {
-                const html = `
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="bg-blue-50 rounded-lg p-4">
-                            <h3 class="font-bold text-blue-800 mb-2">Primary Goal</h3>
-                            <p class="text-gray-700">${data.goal}</p>
-                        </div>
-                        <div class="bg-green-50 rounded-lg p-4">
-                            <h3 class="font-bold text-green-800 mb-2">Monitoring Objective</h3>
-                            <p class="text-gray-700">${data.monitoring}</p>
-                        </div>
-                    </div>
-                    <div class="mt-4 bg-yellow-50 rounded-lg p-4">
-                        <h3 class="font-bold text-yellow-800 mb-2">Features Used</h3>
-                        <div class="flex flex-wrap gap-2">
-                            ${data.features.map(f => `<span class="bg-yellow-200 text-yellow-800 px-3 py-1 rounded-full text-sm">${f}</span>`).join('')}
-                        </div>
-                    </div>
-                    <div class="mt-4 bg-purple-50 rounded-lg p-4">
-                        <h3 class="font-bold text-purple-800 mb-2">Methods Applied</h3>
-                        <ul class="list-disc list-inside text-gray-700">
-                            ${data.methods.map(m => `<li>${m}</li>`).join('')}
-                        </ul>
-                    </div>
-                `;
-                document.getElementById('problem-content').innerHTML = html;
-            }
-        }
+        // Problem Definition
+async function loadProblem() {
+    const data = await fetchData('/problem');
+
+    const container = document.getElementById('problem-content');
+
+    if (!data) {
+        container.innerHTML =
+            `<p class="text-red-500">Failed to load problem definition</p>`;
+        return;
+    }
+
+    const html = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            <div class="bg-blue-50 rounded-lg p-4">
+                <h3 class="font-bold text-blue-800 mb-2">🎯 Objective</h3>
+                <p>${data.goal || 'Not available'}</p>
+            </div>
+
+            <div class="bg-green-50 rounded-lg p-4">
+                <h3 class="font-bold text-green-800 mb-2">📊 Monitoring</h3>
+                <p>${data.monitoring || 'Not available'}</p>
+            </div>
+
+        </div>
+
+        <div class="mt-4 bg-red-50 rounded-lg p-4">
+            <h3 class="font-bold text-red-800 mb-2">📌 Justification</h3>
+            <p>${data.justification || 'Industrial quality improvement and defect reduction'}</p>
+        </div>
+
+        <div class="mt-4 bg-yellow-50 rounded-lg p-4">
+            <h3 class="font-bold text-yellow-800 mb-2">⚙️ Features Used</h3>
+            <div class="flex flex-wrap gap-2">
+                ${(data.features || []).map(f => 
+                    `<span class="bg-yellow-200 px-3 py-1 rounded-full text-sm">${f}</span>`
+                ).join('')}
+            </div>
+        </div>
+
+        <div class="mt-4 bg-purple-50 rounded-lg p-4">
+            <h3 class="font-bold text-purple-800 mb-2">🧠 Methods Applied</h3>
+            <ul class="list-disc ml-5">
+                ${(data.methods || []).map(m => `<li>${m}</li>`).join('')}
+            </ul>
+        </div>
+    `;
+
+    container.innerHTML = html;
+}
+window.onload = function () {
+    loadProblem();
+};
+
+async function loadFactor() {
+    const data = await fetchData("/factor");
+
+    const trace = {
+        x: data.factor1,
+        y: data.factor2,
+        mode: "markers",
+        type: "scatter"
+    };
+
+    Plotly.newPlot("pca-variance", [trace]);
+}
 
         // SPC Analysis
         async function loadSPC() {
@@ -542,187 +582,300 @@
 
         // EDA Analysis
         async function loadEDA() {
-            const data = await fetchData('/eda');
-            if (data.success) {
-                // Statistics table
-                const stats = data.statistics;
-                const statRows = Object.keys(stats[Object.keys(stats)[0]] || {}).map(stat => {
-                    const row = { Statistic: stat };
-                    Object.keys(stats).forEach(col => {
-                        row[col] = stats[col][stat] !== undefined ? stats[col][stat].toFixed(2) : '--';
-                    });
-                    return row;
-                });
-                document.getElementById('eda-stats').innerHTML = 
-                    '<h3 class="font-bold mb-2">Summary Statistics</h3>' + 
-                    createTable(statRows, ['Statistic', ...Object.keys(stats)]);
+    const statsDiv = document.getElementById('eda-stats');
+    const histDiv = document.getElementById('eda-histogram');
+    const corrDiv = document.getElementById('eda-correlation');
 
-                // Histogram for first feature
-                const firstCol = data.numeric_columns[0];
-                const histData = data.histograms[firstCol];
+    try {
+        const data = await fetchData('/eda');
+
+        if (!data || !data.success) {
+            statsDiv.innerHTML =
+                `<div class="bg-red-100 text-red-800 p-3 rounded-lg">
+                    Error: ${data?.error || 'Failed to load EDA data'}
+                </div>`;
+            return;
+        }
+
+        // ================= STATISTICS =================
+        const stats = data.statistics || {};
+
+        if (Object.keys(stats).length === 0) {
+            statsDiv.innerHTML = `<p>No statistics available</p>`;
+        } else {
+            const firstCol = Object.keys(stats)[0];
+            const statKeys = Object.keys(stats[firstCol] || {});
+
+            const statRows = statKeys.map(stat => {
+                const row = { Statistic: stat };
+
+                Object.keys(stats).forEach(col => {
+                    const val = stats[col][stat];
+                    row[col] = (val !== undefined && !isNaN(val)) ? Number(val).toFixed(2) : '--';
+                });
+
+                return row;
+            });
+
+            statsDiv.innerHTML =
+                '<h3 class="font-bold mb-2">Summary Statistics</h3>' +
+                createTable(statRows, ['Statistic', ...Object.keys(stats)]);
+        }
+
+        // ================= HISTOGRAM =================
+        const numericCols = data.numeric_columns || [];
+
+        if (numericCols.length === 0) {
+            histDiv.innerHTML = `<p>No numeric data for histogram</p>`;
+        } else {
+            const firstCol = numericCols[0];
+            const histData = data.histograms?.[firstCol];
+
+            if (!histData || !histData.bins || !histData.counts) {
+                histDiv.innerHTML = `<p>No histogram data</p>`;
+            } else {
+                const centers = histData.bins.slice(0, -1).map((b, i) =>
+                    (b + histData.bins[i + 1]) / 2
+                );
+
                 const histTrace = {
-                    x: histData.bins.slice(0, -1).map((b, i) => (b + histData.bins[i + 1]) / 2),
+                    x: centers,
                     y: histData.counts,
                     type: 'bar',
                     marker: { color: '#0284c7' }
                 };
-                const histLayout = {
-                    title: `Histogram: ${firstCol}`,
-                    xaxis: { title: firstCol },
-                    yaxis: { title: 'Frequency' },
-                    height: 300,
-                    margin: { t: 50, b: 40, l: 50, r: 20 }
-                };
-                Plotly.newPlot('eda-histogram', [histTrace], histLayout, { responsive: true });
 
-                // Correlation heatmap
-                const corrMatrix = data.correlation;
-                const features = Object.keys(corrMatrix);
-                const zValues = features.map(f => features.map(f2 => corrMatrix[f][f2]));
-                
-                const heatmapTrace = {
-                    z: zValues,
-                    x: features,
-                    y: features,
-                    type: 'heatmap',
-                    colorscale: 'RdBu',
-                    zmid: 0
-                };
-                const heatmapLayout = {
-                    title: 'Correlation Heatmap',
-                    height: 350,
-                    margin: { t: 50, b: 60, l: 80, r: 20 }
-                };
-                Plotly.newPlot('eda-correlation', [heatmapTrace], heatmapLayout, { responsive: true });
-            } else {
-                document.getElementById('eda-stats').innerHTML = 
-                    `<div class="bg-red-100 text-red-800 p-3 rounded-lg">Error: ${data.error || 'Failed to load EDA data'}</div>`;
+                Plotly.newPlot('eda-histogram', [histTrace], {
+                    title: `Histogram: ${firstCol}`,
+                    height: 300
+                }, { responsive: true });
             }
         }
+
+        // ================= CORRELATION =================
+        const corrMatrix = data.correlation || {};
+
+        if (Object.keys(corrMatrix).length === 0) {
+            corrDiv.innerHTML = `<p>No correlation data</p>`;
+        } else {
+            const features = Object.keys(corrMatrix);
+
+            const zValues = features.map(f =>
+                features.map(f2 => corrMatrix[f]?.[f2] ?? 0)
+            );
+
+            const heatmapTrace = {
+                z: zValues,
+                x: features,
+                y: features,
+                type: 'heatmap',
+                colorscale: 'RdBu',
+                zmid: 0
+            };
+
+            Plotly.newPlot('eda-correlation', [heatmapTrace], {
+                title: 'Correlation Heatmap',
+                height: 350
+            }, { responsive: true });
+        }
+
+    } catch (err) {
+        statsDiv.innerHTML =
+            `<div class="bg-red-100 text-red-800 p-3 rounded-lg">
+                Error: ${err.message}
+            </div>`;
+    }
+}
 
         // PCA Analysis
         async function loadPCA() {
-            const data = await fetchData('/pca');
-            if (data.success) {
-                // Explained variance plot
-                const pcLabels = data.explained_variance.map((_, i) => `PC${i + 1}`);
-                
-                const barTrace = {
-                    x: pcLabels,
-                    y: data.explained_variance.map(v => v * 100),
-                    type: 'bar',
-                    name: 'Individual',
-                    marker: { color: '#0284c7' }
-                };
-                
-                const lineTrace = {
-                    x: pcLabels,
-                    y: data.cumulative_variance.map(v => v * 100),
-                    type: 'scatter',
-                    mode: 'lines+markers',
-                    name: 'Cumulative',
-                    marker: { color: '#dc2626' }
-                };
-                
-                const varianceLayout = {
-                    title: 'Explained Variance by Principal Components',
-                    xaxis: { title: 'Principal Component' },
-                    yaxis: { title: 'Variance (%)' },
-                    height: 300,
-                    margin: { t: 50, b: 40, l: 50, r: 20 },
-                    showlegend: true
-                };
-                Plotly.newPlot('pca-variance', [barTrace, lineTrace], varianceLayout, { responsive: true });
+    const varianceDiv = document.getElementById('pca-variance');
+    const scatterDiv = document.getElementById('pca-scatter');
 
-                // PCA Scatter plot
-                const colors = data.pca_data.Defect ? 
-                    data.pca_data.Defect.map(d => d === 'Yes' ? '#dc2626' : '#0284c7') : 
-                    data.pca_data.PC1.map(() => '#0284c7');
-                
-                const scatterTrace = {
-                    x: data.pca_data.PC1,
-                    y: data.pca_data.PC2,
-                    mode: 'markers',
-                    type: 'scatter',
-                    marker: { color: colors, size: 8 },
-                    text: data.pca_data.Defect || [],
-                    hoverinfo: 'x+y+text'
-                };
-                
-                const scatterLayout = {
-                    title: 'PCA: PC1 vs PC2',
-                    xaxis: { title: 'PC1' },
-                    yaxis: { title: 'PC2' },
-                    height: 300,
-                    margin: { t: 50, b: 40, l: 50, r: 20 }
-                };
-                Plotly.newPlot('pca-scatter', [scatterTrace], scatterLayout, { responsive: true });
-            } else {
-                document.getElementById('pca-variance').innerHTML = 
-                    `<div class="bg-red-100 text-red-800 p-3 rounded-lg">Error: ${data.error || 'Failed to load PCA data'}</div>`;
-            }
+    try {
+        const data = await fetchData('/pca');
+
+        if (!data || !data.success) {
+            varianceDiv.innerHTML =
+                `<div class="bg-red-100 text-red-800 p-3 rounded-lg">
+                    Error: ${data?.error || 'Failed to load PCA data'}
+                </div>`;
+            return;
         }
+
+        // ================= VARIANCE =================
+        const explained = data.explained_variance || [];
+
+        if (explained.length === 0) {
+            varianceDiv.innerHTML = `<p>No variance data available</p>`;
+            return;
+        }
+
+        const cumulative = [];
+        explained.reduce((acc, val, i) => {
+            cumulative[i] = acc + val;
+            return cumulative[i];
+        }, 0);
+
+        const pcLabels = explained.map((_, i) => `PC${i + 1}`);
+
+        const barTrace = {
+            x: pcLabels,
+            y: explained.map(v => v * 100),
+            type: 'bar',
+            name: 'Individual',
+            marker: { color: '#0284c7' }
+        };
+
+        const lineTrace = {
+            x: pcLabels,
+            y: cumulative.map(v => v * 100),
+            type: 'scatter',
+            mode: 'lines+markers',
+            name: 'Cumulative',
+            marker: { color: '#dc2626' }
+        };
+
+        Plotly.newPlot('pca-variance', [barTrace, lineTrace], {
+            title: 'Explained Variance',
+            height: 300
+        }, { responsive: true });
+
+        // ================= SCATTER =================
+        const pcaData = data.pca_data;
+
+        if (!pcaData || !pcaData.PC1 || !pcaData.PC2) {
+            scatterDiv.innerHTML = `<p>No PCA scatter data</p>`;
+            return;
+        }
+
+        // Safe color handling
+        let colors = pcaData.PC1.map(() => '#0284c7');
+
+        if (pcaData.Defect) {
+            colors = pcaData.Defect.map(d =>
+                (d === 'Yes' || d === 1) ? '#dc2626' : '#0284c7'
+            );
+        }
+
+        const scatterTrace = {
+            x: pcaData.PC1,
+            y: pcaData.PC2,
+            mode: 'markers',
+            type: 'scatter',
+            marker: { color: colors, size: 8 },
+            text: pcaData.Defect || [],
+            hoverinfo: 'x+y+text'
+        };
+
+        Plotly.newPlot('pca-scatter', [scatterTrace], {
+            title: 'PCA Scatter',
+            height: 300
+        }, { responsive: true });
+
+    } catch (err) {
+        varianceDiv.innerHTML =
+            `<div class="bg-red-100 text-red-800 p-3 rounded-lg">
+                Error: ${err.message}
+            </div>`;
+    }
+}
 
         // Clustering
         async function loadClustering() {
-            const nClusters = Number(document.getElementById('n-clusters').value);
-            const data = await fetchData(`/cluster?n_clusters=${nClusters}`);
-            
-            if (data.success) {
-                // Cluster statistics
-                let statsHtml = '<h3 class="font-bold mb-2">Cluster Statistics</h3>';
-                statsHtml += '<div class="grid grid-cols-1 md:grid-cols-3 gap-2">';
-                data.cluster_stats.forEach(stat => {
-                    statsHtml += `
-                        <div class="bg-white border rounded-lg p-3">
-                            <div class="font-bold text-lg">Cluster ${stat.cluster}</div>
-                            <div class="text-gray-600">${stat.count} samples (${stat.percentage.toFixed(1)}%)</div>
-                        </div>
-                    `;
-                });
-                statsHtml += '</div>';
-                document.getElementById('cluster-stats').innerHTML = statsHtml;
+    const nClusters = Number(document.getElementById('n-clusters').value);
 
-                // Cluster visualization
-                const colors = data.cluster_data.labels.map(l => {
-                    const palette = ['#0284c7', '#dc2626', '#16a34a', '#9333ea', '#ea580c'];
-                    return palette[l];
-                });
+    const container = document.getElementById('cluster-stats');
+    const chart = document.getElementById('cluster-chart');
 
-                const scatterTrace = {
-                    x: data.cluster_data.x,
-                    y: data.cluster_data.y,
-                    mode: 'markers',
-                    type: 'scatter',
-                    marker: { color: colors, size: 10 },
-                    text: data.cluster_data.labels.map(l => `Cluster ${l}`),
-                    name: 'Data Points'
-                };
+    try {
+        const data = await fetchData(`/cluster?n_clusters=${nClusters}`);
 
-                const centersTrace = {
-                    x: data.cluster_data.centers_x,
-                    y: data.cluster_data.centers_y,
-                    mode: 'markers',
-                    type: 'scatter',
-                    marker: { color: 'black', size: 15, symbol: 'x' },
-                    name: 'Centers'
-                };
-
-                const layout = {
-                    title: `K-Means Clustering (k=${nClusters})`,
-                    xaxis: { title: data.cluster_data.feature_x },
-                    yaxis: { title: data.cluster_data.feature_y },
-                    height: 400,
-                    margin: { t: 50, b: 40, l: 50, r: 20 },
-                    showlegend: true
-                };
-
-                Plotly.newPlot('cluster-chart', [scatterTrace, centersTrace], layout, { responsive: true });
-            } else {
-                document.getElementById('cluster-stats').innerHTML = 
-                    `<div class="bg-red-100 text-red-800 p-3 rounded-lg">Error: ${data.error || 'Failed to load clustering data'}</div>`;
-            }
+        if (!data || !data.success) {
+            container.innerHTML =
+                `<div class="bg-red-100 text-red-800 p-3 rounded-lg">
+                    Error: ${data?.error || 'Failed to load clustering data'}
+                </div>`;
+            return;
         }
+
+        // ================= CLUSTER STATS =================
+        if (data.cluster_stats && data.cluster_stats.length > 0) {
+            let statsHtml = '<h3 class="font-bold mb-2">Cluster Statistics</h3>';
+            statsHtml += '<div class="grid grid-cols-1 md:grid-cols-3 gap-2">';
+
+            data.cluster_stats.forEach(stat => {
+                statsHtml += `
+                    <div class="bg-white border rounded-lg p-3">
+                        <div class="font-bold text-lg">Cluster ${stat.cluster}</div>
+                        <div class="text-gray-600">
+                            ${stat.count} samples (${Number(stat.percentage).toFixed(1)}%)
+                        </div>
+                    </div>
+                `;
+            });
+
+            statsHtml += '</div>';
+            container.innerHTML = statsHtml;
+        } else {
+            container.innerHTML = `<p>No cluster statistics available</p>`;
+        }
+
+        // ================= PLOT =================
+        if (!data.cluster_data) {
+            chart.innerHTML = `<p>No visualization data</p>`;
+            return;
+        }
+
+        const palette = ['#0284c7', '#dc2626', '#16a34a', '#9333ea', '#ea580c'];
+
+        const colors = data.cluster_data.labels.map(l => palette[l % palette.length]);
+
+        const scatterTrace = {
+            x: data.cluster_data.x,
+            y: data.cluster_data.y,
+            mode: 'markers',
+            type: 'scatter',
+            marker: { color: colors, size: 10 },
+            text: data.cluster_data.labels.map(l => `Cluster ${l}`),
+            name: 'Data Points'
+        };
+
+        const centersTrace = {
+            x: data.cluster_data.centers_x,
+            y: data.cluster_data.centers_y,
+            mode: 'markers',
+            type: 'scatter',
+            marker: { color: 'black', size: 14, symbol: 'x' },
+            name: 'Centers'
+        };
+
+        const layout = {
+            title: `K-Means Clustering (k=${nClusters})`,
+            xaxis: { title: data.cluster_data.feature_x || "Feature 1" },
+            yaxis: { title: data.cluster_data.feature_y || "Feature 2" },
+            height: 400,
+            margin: { t: 50, b: 40, l: 50, r: 20 },
+            showlegend: true
+        };
+
+        // Check Plotly
+        if (typeof Plotly === "undefined") {
+            chart.innerHTML = `<p class="text-red-500">Plotly not loaded</p>`;
+            return;
+        }
+
+        Plotly.newPlot('cluster-chart', [scatterTrace, centersTrace], layout, {
+            responsive: true
+        });
+
+    } catch (err) {
+        container.innerHTML =
+            `<div class="bg-red-100 text-red-800 p-3 rounded-lg">
+                Error: ${err.message}
+            </div>`;
+    }
+}
 
         // Models
         async function loadModels() {
