@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 import pandas as pd
 import numpy as np
+from preprocessing import preprocess_data
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
@@ -81,16 +82,29 @@ def favicon():
 async def upload_file(file: UploadFile = File(...)):
     """Upload a CSV file and save it as the dataset"""
     global current_data
+
     try:
+        # Read file content
         content = await file.read()
+
+        # Save file
         with open(data_path, 'wb') as f:
             f.write(content)
-        
-        current_data = pd.read_csv(data_path)
-        
-        # Prepare response
-        preview = current_data.head(10).where(pd.notnull(current_data), None).to_dict(orient='records')
-        
+
+        # Read CSV safely
+        current_data = pd.read_csv(data_path, encoding='utf-8')
+
+        # 👉 APPLY PREPROCESSING (IMPORTANT)
+        from preprocessing import preprocess_data
+        X, y, current_data = preprocess_data(current_data)
+
+        # Preview (clean NaN → None for JSON)
+        preview = (
+            current_data.head(10)
+            .replace({np.nan: None})
+            .to_dict(orient='records')
+        )
+
         return {
             "success": True,
             "message": f"File '{file.filename}' uploaded successfully",
@@ -98,8 +112,12 @@ async def upload_file(file: UploadFile = File(...)):
             "columns": list(current_data.columns),
             "shape": list(current_data.shape)
         }
+
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {
+            "success": False,
+            "error": str(e)
+        }
 
 @app.get("/problem")
 def get_problem():
@@ -475,4 +493,4 @@ def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8000)
