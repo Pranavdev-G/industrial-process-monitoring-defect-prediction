@@ -229,3 +229,7 @@ async def upload(request: Request, file: UploadFile = File(...)):
         dataset = None
 
     return await home(request)
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", reload=True)
