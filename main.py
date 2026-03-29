@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 import pandas as pd
 import numpy as np
-from preprocessing import preprocess_data
+from pre_process import preprocess_data
 from sklearn.decomposition import FactorAnalysis
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
@@ -96,7 +96,7 @@ async def upload_file(file: UploadFile = File(...)):
         current_data = pd.read_csv(data_path, encoding='utf-8')
 
         # 👉 APPLY PREPROCESSING (IMPORTANT)
-        from preprocessing import preprocess_data
+        from pre_process import preprocess_data
         X, y, current_data = preprocess_data(current_data)
 
         # Preview (clean NaN → None for JSON)
