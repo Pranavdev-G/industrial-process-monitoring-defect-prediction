@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Industrial Process Monitoring and Defect Prediction</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        .sidebar-link {
+            transition: all 0.2s ease;
+        }
+        .sidebar-link:hover {
+            background-color: #e0f2fe;
+            color: #0284c7;
+        }
+        .sidebar-link.active {
+            background-color: #0284c7;
+            color: white;
+        }
+        .section-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .gradient-header {
+            background: linear-gradient(135deg, #1e3a5f 0%, #0891b2 100%);
+        }
+        .status-stable {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+        .status-unstable {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #0284c7;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex h-screen">
+        <!-- Left Sidebar -->
+        <aside class="w-64 bg-white shadow-lg flex-shrink-0 overflow-y-auto">
+            <div class="p-4 border-b border-gray-200">
+                <h1 class="text-lg font-bold text-gray-800">Industrial Process</h1>
+                <p class="text-sm text-gray-500">Monitoring System</p>
+            </div>
+            <nav class="p-4">
+                <ul class="space-y-2">
+                    <li>
+                        <a href="#overview" class="sidebar-link active block px-4 py-3 rounded-lg text-gray-700 font-medium" onclick="setActive(this)">
+                            📊 Overview
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#data-upload" class="sidebar-link block px-4 py-3 rounded-lg text-gray-700 font-medium" onclick="setActive(this)">
+                            📁 Data Upload
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#problem" class="sidebar-link block px-4 py-3 rounded-lg text-gray-700 font-medium" onclick="setActive(this)">
+                            🎯 Problem Definition
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#spc" class="sidebar-link block px-4 py-3 rounded-lg text-gray-700 font-medium" onclick="setActive(this)">
+                            📈 SPC Analysis
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#eda" class="sidebar-link block px-4 py-3 rounded-lg text-gray-700 font-medium" onclick="setActive(this)">
+                            📉 EDA
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#pca" class="sidebar-link block px-4 py-3 rounded-lg text-gray-700 font-medium" onclick="setActive(this)">
+                            🔬 PCA
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#clustering" class="sidebar-link block px-4 py-3 rounded-lg text-gray-700 font-medium" onclick="setActive(this)">
+                            🔮 Clustering
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#models" class="sidebar-link block px-4 py-3 rounded-lg text-gray-700 font-medium" onclick="setActive(this)">
+                            🤖 Models
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#evaluation" class="sidebar-link block px-4 py-3 rounded-lg text-gray-700 font-medium" onclick="setActive(this)">
+                            📋 Evaluation
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#results" class="sidebar-link block px-4 py-3 rounded-lg text-gray-700 font-medium" onclick="setActive(this)">
+                            ✅ Results
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Top Header -->
+            <header class="gradient-header text-white px-6 py-4 shadow-lg">
+                <h1 class="text-2xl font-bold">Industrial Process Monitoring and Defect Prediction</h1>
+                <p class="text-cyan-100 text-sm mt-1">Using Statistical Process Control and Multivariate Predictive Analytics</p>
+            </header>
+
+            <!-- Main Dashboard Content -->
+            <main class="flex-1 overflow-y-auto p-6">
+                <!-- Overview Section -->
+                <section id="overview" class="section-card">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                        <span class="mr-2">📊</span> Overview
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                        <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white">
+                            <p class="text-sm opacity-80">Total Samples</p>
+                            <p class="text-2xl font-bold" id="overview-samples">--</p>
+                        </div>
+                        <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-4 text-white">
+                            <p class="text-sm opacity-80">Good Products</p>
+                            <p class="text-2xl font-bold" id="overview-good">--</p>
+                        </div>
+                        <div class="bg-gradient-to-r from-red-500 to-red-600 rounded-lg p-4 text-white">
+                            <p class="text-sm opacity-80">Defective Products</p>
+                            <p class="text-2xl font-bold" id="overview-defect">--</p>
+                        </div>
+                        <div class="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-4 text-white">
+                            <p class="text-sm opacity-80">Process Status</p>
+                            <p class="text-2xl font-bold" id="overview-status">--</p>
+                        </div>
+                    </div>
+                    <button onclick="loadOverview()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                        Load Overview
+                    </button>
+                </section>
+
+                <!-- Data Upload Section -->
+                <section id="data-upload" class="section-card">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                        <span class="mr-2">📁</span> Data Upload
+                    </h2>
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center mb-4">
+                        <input type="file" id="fileInput" accept=".csv" class="hidden" onchange="uploadFile(event)">
+                        <label for="fileInput" class="cursor-pointer">
+                            <div class="text-gray-500">
+                                <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                </svg>
+                                <p class="mt-2">Click to upload CSV file or drag and drop</p>
+                                <p class="text-sm text-gray-400">Default: dataset.csv</p>
+                            </div>
+                        </label>
+                    </div>
+                    <div id="upload-status" class="mb-4"></div>
+                    <div id="data-preview" class="overflow-x-auto"></div>
+                </section>
+
+                <!-- Problem Definition Section -->
+                <section id="problem" class="section-card">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                        <span class="mr-2">🎯</span> Problem Definition
+                    </h2>
+                    <div id="problem-content">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-blue-50 rounded-lg p-4">
+                                <h3 class="font-bold text-blue-800 mb-2">Primary Goal</h3>
+                                <p class="text-gray-700">Predict whether a product will be defective (Yes/No) based on process parameters using machine learning classification models.</p>
+                            </div>
+                            <div class="bg-green-50 rounded-lg p-4">
+                                <h3 class="font-bold text-green-800 mb-2">Monitoring Objective</h3>
+                                <p class="text-gray-700">Monitor industrial process stability using Statistical Process Control (SPC) to detect out-of-control conditions.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="loadProblem()" class="mt-4 bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 transition">
+                        Load Problem Definition
+                    </button>
+                </section>
+
+                <!-- SPC Section -->
+                <section id="spc" class="section-card">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                        <span class="mr-2">📈</span> Statistical Process Control (SPC)
+                    </h2>
+                    <div id="spc-status" class="mb-4"></div>
+                    <div id="spc-charts" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
+                    <button onclick="loadSPC()" class="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
+                        Run SPC Analysis
+                    </button>
+                </section>
+
+                <!-- EDA Section -->
+                <section id="eda" class="section-card">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                        <span class="mr-2">📉</span> Exploratory Data Analysis (EDA)
+                    </h2>
+                    <div id="eda-stats" class="overflow-x-auto mb-4"></div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div id="eda-histogram" class="bg-gray-50 rounded-lg p-4"></div>
+                        <div id="eda-correlation" class="bg-gray-50 rounded-lg p-4"></div>
+                    </div>
+                    <button onclick="loadEDA()" class="mt-4 bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 transition">
+                        Run EDA Analysis
+                    </button>
+                </section>
+
+                <!-- PCA Section -->
+                <section id="pca" class="section-card">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                        <span class="mr-2">🔬</span> Principal Component Analysis (PCA)
+                    </h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div id="pca-variance" class="bg-gray-50 rounded-lg p-4"></div>
+                        <div id="pca-scatter" class="bg-gray-50 rounded-lg p-4"></div>
+                    </div>
+                    <button onclick="loadPCA()" class="mt-4 bg-violet-600 text-white px-4 py-2 rounded-lg hover:bg-violet-700 transition">
+                        Run PCA Analysis
+                    </button>
+                </section>
+
+                <!-- Clustering Section -->
+                <section id="clustering" class="section-card">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                        <span class="mr-2">🔮</span> K-Means Clustering
+                    </h2>
+                    <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <label for="n-clusters" class="text-gray-700 font-medium">Number of Clusters:</label>
+                        <select id="n-clusters" name="n-clusters" class="w-full rounded-lg border border-gray-300 px-3 py-2 sm:w-auto" aria-label="Number of clusters">
+                            <option value="2">2</option>
+                            <option value="3" selected>3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                        </select>
+                    </div>
+                    <div id="cluster-stats" class="mb-4"></div>
+                    <div id="cluster-chart" class="bg-gray-50 rounded-lg p-4"></div>
+                    <button onclick="loadClustering()" class="mt-4 bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700 transition">
+                        Run Clustering
+                    </button>
+                </section>
+
+                <!-- Models Section -->
+                <section id="models" class="section-card">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                        <span class="mr-2">🤖</span> Predictive Models
+                    </h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                        <div class="bg-blue-50 rounded-lg p-4">
+                            <h3 class="font-bold text-blue-800 mb-2">Model 1: Logistic Regression</h3>
+                            <p class="text-gray-600 text-sm">Linear classification model for binary outcomes. Good for interpretability.</p>
+                            <div id="model-lr-results" class="mt-2"></div>
+                        </div>
+                        <div class="bg-green-50 rounded-lg p-4">
+                            <h3 class="font-bold text-green-800 mb-2">Model 2: Decision Tree</h3>
+                            <p class="text-gray-600 text-sm">Non-linear classification model. Captures complex patterns in data.</p>
+                            <div id="model-dt-results" class="mt-2"></div>
+                        </div>
+                    </div>
+                    <div id="feature-importance" class="bg-gray-50 rounded-lg p-4 mb-4"></div>
+                    <button onclick="loadModels()" class="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition">
+                        Train Models
+                    </button>
+                </section>
+
+                <!-- Evaluation Section -->
+                <section id="evaluation" class="section-card">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                        <span class="mr-2">📋</span> Model Evaluation
+                    </h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                        <div id="eval-comparison" class="bg-gray-50 rounded-lg p-4"></div>
+                        <div id="eval-confusion-lr" class="bg-gray-50 rounded-lg p-4"></div>
+                    </div>
+                    <div id="eval-confusion-dt" class="bg-gray-50 rounded-lg p-4 mb-4"></div>
+                    <button onclick="loadModels()" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition">
+                        Refresh Evaluation
+                    </button>
+                </section>
+
+                <!-- Results Section -->
+                <section id="results" class="section-card">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                        <span class="mr-2">✅</span> Final Results Summary
+                    </h2>
+                    <div id="results-content" class="space-y-4"></div>
+                    <button onclick="loadResults()" class="mt-4 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition">
+                        Generate Results Summary
+                    </button>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+
+        // Utility function for API calls
+        async function fetchData(endpoint) {
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`);
+                return await response.json();
+            } catch (error) {
+                console.error('API Error:', error);
+                return { success: false, error: error.message };
+            }
+        }
+
+        // Set active sidebar link
+        function setActive(element) {
+            document.querySelectorAll('.sidebar-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            element.classList.add('active');
+        }
+
+        // Create data table
+        function createTable(data, columns) {
+            if (!data || data.length === 0) return '<p class="text-gray-500">No data available</p>';
+            
+            const cols = columns || Object.keys(data[0]);
+            let html = '<table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>';
+            cols.forEach(col => {
+                html += `<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${col}</th>`;
+            });
+            html += '</tr></thead><tbody class="bg-white divide-y divide-gray-200">';
+            data.forEach(row => {
+                html += '<tr>';
+                cols.forEach(col => {
+                    const val = row[col] !== undefined ? row[col] : '';
+                    html += `<td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">${val}</td>`;
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            return html;
+        }
+
+        // Overview
+        async function loadOverview() {
+            const data = await fetchData('/results');
+            if (data.success) {
+                const summary = data.summary;
+                document.getElementById('overview-samples').textContent = summary.total_samples;
+                
+                const goodCount = summary.defect_distribution['No'] || 0;
+                const defectCount = summary.defect_distribution['Yes'] || 0;
+                
+                document.getElementById('overview-good').textContent = goodCount;
+                document.getElementById('overview-defect').textContent = defectCount;
+                
+                // Calculate defect rate
+                const defectRate = ((defectCount / summary.total_samples) * 100).toFixed(1);
+                document.getElementById('overview-status').textContent = `${defectRate}% Defect Rate`;
+            } else {
+                console.error('Failed to load overview:', data.error);
+                document.getElementById('overview-samples').textContent = 'Error';
+                document.getElementById('overview-good').textContent = 'Error';
+                document.getElementById('overview-defect').textContent = 'Error';
+                document.getElementById('overview-status').textContent = 'Error';
+            }
+        }
+
+        // Upload file
+        async function uploadFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch(`${API_BASE}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('upload-status').innerHTML = 
+                        `<div class="bg-green-100 text-green-800 p-3 rounded-lg">✅ ${data.message}</div>`;
+                    document.getElementById('data-preview').innerHTML = 
+                        `<h3 class="font-bold mb-2">Data Preview (${data.shape[0]} rows × ${data.shape[1]} columns)</h3>` +
+                        createTable(data.preview, data.columns);
+                } else {
+                    document.getElementById('upload-status').innerHTML = 
+                        `<div class="bg-red-100 text-red-800 p-3 rounded-lg">❌ ${data.error}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('upload-status').innerHTML = 
+                    `<div class="bg-red-100 text-red-800 p-3 rounded-lg">❌ Upload failed: ${error.message}</div>`;
+            }
+        }
+
+        // Problem Definition
+        async function loadProblem() {
+            const data = await fetchData('/problem');
+            if (data) {
+                const html = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-blue-50 rounded-lg p-4">
+                            <h3 class="font-bold text-blue-800 mb-2">Primary Goal</h3>
+                            <p class="text-gray-700">${data.goal}</p>
+                        </div>
+                        <div class="bg-green-50 rounded-lg p-4">
+                            <h3 class="font-bold text-green-800 mb-2">Monitoring Objective</h3>
+                            <p class="text-gray-700">${data.monitoring}</p>
+                        </div>
+                    </div>
+                    <div class="mt-4 bg-yellow-50 rounded-lg p-4">
+                        <h3 class="font-bold text-yellow-800 mb-2">Features Used</h3>
+                        <div class="flex flex-wrap gap-2">
+                            ${data.features.map(f => `<span class="bg-yellow-200 text-yellow-800 px-3 py-1 rounded-full text-sm">${f}</span>`).join('')}
+                        </div>
+                    </div>
+                    <div class="mt-4 bg-purple-50 rounded-lg p-4">
+                        <h3 class="font-bold text-purple-800 mb-2">Methods Applied</h3>
+                        <ul class="list-disc list-inside text-gray-700">
+                            ${data.methods.map(m => `<li>${m}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+                document.getElementById('problem-content').innerHTML = html;
+            }
+        }
+
+        // SPC Analysis
+        async function loadSPC() {
+            const data = await fetchData('/spc');
+            if (data.success) {
+                const statusClass = data.process_stable ? 'status-stable' : 'status-unstable';
+                document.getElementById('spc-status').innerHTML = 
+                    `<div class="${statusClass} p-4 rounded-lg text-center font-bold">
+                        ${data.message}
+                    </div>`;
+
+                const chartsDiv = document.getElementById('spc-charts');
+                chartsDiv.innerHTML = '';
+
+                // Create chart for each feature
+                for (const [feature, result] of Object.entries(data.spc_results)) {
+                    const chartDiv = document.createElement('div');
+                    chartDiv.id = `spc-chart-${feature}`;
+                    chartDiv.className = 'bg-gray-50 rounded-lg p-4';
+                    chartsDiv.appendChild(chartDiv);
+
+                    // Prepare data for plotly
+                    const xVals = result.data.map((_, i) => i + 1);
+                    const colors = result.data.map(val => 
+                        val > result.UCL || val < result.LCL ? 'red' : '#0284c7'
+                    );
+
+                    const trace = {
+                        x: xVals,
+                        y: result.data,
+                        mode: 'lines+markers',
+                        type: 'scatter',
+                        name: feature,
+                        marker: { color: colors, size: 8 },
+                        line: { color: '#0284c7' }
+                    };
+
+                    const uclLine = {
+                        x: [1, result.data.length],
+                        y: [result.UCL, result.UCL],
+                        mode: 'lines',
+                        name: 'UCL',
+                        line: { color: 'red', dash: 'dash' }
+                    };
+
+                    const lclLine = {
+                        x: [1, result.data.length],
+                        y: [result.LCL, result.LCL],
+                        mode: 'lines',
+                        name: 'LCL',
+                        line: { color: 'red', dash: 'dash' }
+                    };
+
+                    const meanLine = {
+                        x: [1, result.data.length],
+                        y: [result.mean, result.mean],
+                        mode: 'lines',
+                        name: 'Mean',
+                        line: { color: 'green' }
+                    };
+
+                    const layout = {
+                        title: `X-bar Chart: ${feature}`,
+                        xaxis: { title: 'Sample' },
+                        yaxis: { title: feature },
+                        showlegend: true,
+                        height: 300,
+                        margin: { t: 50, b: 40, l: 50, r: 20 },
+                        annotations: [{
+                            x: result.data.length,
+                            y: result.UCL,
+                            text: `UCL: ${result.UCL.toFixed(2)}`,
+                            showarrow: false,
+                            font: { color: 'red', size: 10 },
+                            xanchor: 'left'
+                        }, {
+                            x: result.data.length,
+                            y: result.LCL,
+                            text: `LCL: ${result.LCL.toFixed(2)}`,
+                            showarrow: false,
+                            font: { color: 'red', size: 10 },
+                            xanchor: 'left'
+                        }, {
+                            x: result.data.length,
+                            y: result.mean,
+                            text: `Mean: ${result.mean.toFixed(2)}`,
+                            showarrow: false,
+                            font: { color: 'green', size: 10 },
+                            xanchor: 'left'
+                        }]
+                    };
+
+                    Plotly.newPlot(chartDiv, [trace, uclLine, lclLine, meanLine], layout, { responsive: true });
+                }
+            } else {
+                document.getElementById('spc-status').innerHTML = 
+                    `<div class="bg-red-100 text-red-800 p-4 rounded-lg text-center font-bold">
+                        Error: ${data.error || 'Failed to load SPC data'}
+                    </div>`;
+            }
+        }
+
+        // EDA Analysis
+        async function loadEDA() {
+            const data = await fetchData('/eda');
+            if (data.success) {
+                // Statistics table
+                const stats = data.statistics;
+                const statRows = Object.keys(stats[Object.keys(stats)[0]] || {}).map(stat => {
+                    const row = { Statistic: stat };
+                    Object.keys(stats).forEach(col => {
+                        row[col] = stats[col][stat] !== undefined ? stats[col][stat].toFixed(2) : '--';
+                    });
+                    return row;
+                });
+                document.getElementById('eda-stats').innerHTML = 
+                    '<h3 class="font-bold mb-2">Summary Statistics</h3>' + 
+                    createTable(statRows, ['Statistic', ...Object.keys(stats)]);
+
+                // Histogram for first feature
+                const firstCol = data.numeric_columns[0];
+                const histData = data.histograms[firstCol];
+                const histTrace = {
+                    x: histData.bins.slice(0, -1).map((b, i) => (b + histData.bins[i + 1]) / 2),
+                    y: histData.counts,
+                    type: 'bar',
+                    marker: { color: '#0284c7' }
+                };
+                const histLayout = {
+                    title: `Histogram: ${firstCol}`,
+                    xaxis: { title: firstCol },
+                    yaxis: { title: 'Frequency' },
+                    height: 300,
+                    margin: { t: 50, b: 40, l: 50, r: 20 }
+                };
+                Plotly.newPlot('eda-histogram', [histTrace], histLayout, { responsive: true });
+
+                // Correlation heatmap
+                const corrMatrix = data.correlation;
+                const features = Object.keys(corrMatrix);
+                const zValues = features.map(f => features.map(f2 => corrMatrix[f][f2]));
+                
+                const heatmapTrace = {
+                    z: zValues,
+                    x: features,
+                    y: features,
+                    type: 'heatmap',
+                    colorscale: 'RdBu',
+                    zmid: 0
+                };
+                const heatmapLayout = {
+                    title: 'Correlation Heatmap',
+                    height: 350,
+                    margin: { t: 50, b: 60, l: 80, r: 20 }
+                };
+                Plotly.newPlot('eda-correlation', [heatmapTrace], heatmapLayout, { responsive: true });
+            } else {
+                document.getElementById('eda-stats').innerHTML = 
+                    `<div class="bg-red-100 text-red-800 p-3 rounded-lg">Error: ${data.error || 'Failed to load EDA data'}</div>`;
+            }
+        }
+
+        // PCA Analysis
+        async function loadPCA() {
+            const data = await fetchData('/pca');
+            if (data.success) {
+                // Explained variance plot
+                const pcLabels = data.explained_variance.map((_, i) => `PC${i + 1}`);
+                
+                const barTrace = {
+                    x: pcLabels,
+                    y: data.explained_variance.map(v => v * 100),
+                    type: 'bar',
+                    name: 'Individual',
+                    marker: { color: '#0284c7' }
+                };
+                
+                const lineTrace = {
+                    x: pcLabels,
+                    y: data.cumulative_variance.map(v => v * 100),
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'Cumulative',
+                    marker: { color: '#dc2626' }
+                };
+                
+                const varianceLayout = {
+                    title: 'Explained Variance by Principal Components',
+                    xaxis: { title: 'Principal Component' },
+                    yaxis: { title: 'Variance (%)' },
+                    height: 300,
+                    margin: { t: 50, b: 40, l: 50, r: 20 },
+                    showlegend: true
+                };
+                Plotly.newPlot('pca-variance', [barTrace, lineTrace], varianceLayout, { responsive: true });
+
+                // PCA Scatter plot
+                const colors = data.pca_data.Defect ? 
+                    data.pca_data.Defect.map(d => d === 'Yes' ? '#dc2626' : '#0284c7') : 
+                    data.pca_data.PC1.map(() => '#0284c7');
+                
+                const scatterTrace = {
+                    x: data.pca_data.PC1,
+                    y: data.pca_data.PC2,
+                    mode: 'markers',
+                    type: 'scatter',
+                    marker: { color: colors, size: 8 },
+                    text: data.pca_data.Defect || [],
+                    hoverinfo: 'x+y+text'
+                };
+                
+                const scatterLayout = {
+                    title: 'PCA: PC1 vs PC2',
+                    xaxis: { title: 'PC1' },
+                    yaxis: { title: 'PC2' },
+                    height: 300,
+                    margin: { t: 50, b: 40, l: 50, r: 20 }
+                };
+                Plotly.newPlot('pca-scatter', [scatterTrace], scatterLayout, { responsive: true });
+            } else {
+                document.getElementById('pca-variance').innerHTML = 
+                    `<div class="bg-red-100 text-red-800 p-3 rounded-lg">Error: ${data.error || 'Failed to load PCA data'}</div>`;
+            }
+        }
+
+        // Clustering
+        async function loadClustering() {
+            const nClusters = Number(document.getElementById('n-clusters').value);
+            const data = await fetchData(`/cluster?n_clusters=${nClusters}`);
+            
+            if (data.success) {
+                // Cluster statistics
+                let statsHtml = '<h3 class="font-bold mb-2">Cluster Statistics</h3>';
+                statsHtml += '<div class="grid grid-cols-1 md:grid-cols-3 gap-2">';
+                data.cluster_stats.forEach(stat => {
+                    statsHtml += `
+                        <div class="bg-white border rounded-lg p-3">
+                            <div class="font-bold text-lg">Cluster ${stat.cluster}</div>
+                            <div class="text-gray-600">${stat.count} samples (${stat.percentage.toFixed(1)}%)</div>
+                        </div>
+                    `;
+                });
+                statsHtml += '</div>';
+                document.getElementById('cluster-stats').innerHTML = statsHtml;
+
+                // Cluster visualization
+                const colors = data.cluster_data.labels.map(l => {
+                    const palette = ['#0284c7', '#dc2626', '#16a34a', '#9333ea', '#ea580c'];
+                    return palette[l];
+                });
+
+                const scatterTrace = {
+                    x: data.cluster_data.x,
+                    y: data.cluster_data.y,
+                    mode: 'markers',
+                    type: 'scatter',
+                    marker: { color: colors, size: 10 },
+                    text: data.cluster_data.labels.map(l => `Cluster ${l}`),
+                    name: 'Data Points'
+                };
+
+                const centersTrace = {
+                    x: data.cluster_data.centers_x,
+                    y: data.cluster_data.centers_y,
+                    mode: 'markers',
+                    type: 'scatter',
+                    marker: { color: 'black', size: 15, symbol: 'x' },
+                    name: 'Centers'
+                };
+
+                const layout = {
+                    title: `K-Means Clustering (k=${nClusters})`,
+                    xaxis: { title: data.cluster_data.feature_x },
+                    yaxis: { title: data.cluster_data.feature_y },
+                    height: 400,
+                    margin: { t: 50, b: 40, l: 50, r: 20 },
+                    showlegend: true
+                };
+
+                Plotly.newPlot('cluster-chart', [scatterTrace, centersTrace], layout, { responsive: true });
+            } else {
+                document.getElementById('cluster-stats').innerHTML = 
+                    `<div class="bg-red-100 text-red-800 p-3 rounded-lg">Error: ${data.error || 'Failed to load clustering data'}</div>`;
+            }
+        }
+
+        // Models
+        async function loadModels() {
+            const data = await fetchData('/model');
+            if (data.success) {
+                const results = data.results;
+                
+                // Logistic Regression results
+                document.getElementById('model-lr-results').innerHTML = `
+                    <div class="text-2xl font-bold text-blue-600">${(results.logistic_regression.accuracy * 100).toFixed(1)}%</div>
+                    <div class="text-sm text-gray-600">Accuracy</div>
+                `;
+
+                // Decision Tree results
+                document.getElementById('model-dt-results').innerHTML = `
+                    <div class="text-2xl font-bold text-green-600">${(results.decision_tree.accuracy * 100).toFixed(1)}%</div>
+                    <div class="text-sm text-gray-600">Accuracy</div>
+                `;
+
+                // Feature Importance
+                const importance = data.feature_importance;
+                const features = Object.keys(importance);
+                const values = Object.values(importance);
+                
+                const importanceTrace = {
+                    x: features,
+                    y: values,
+                    type: 'bar',
+                    marker: { color: '#0284c7' }
+                };
+                
+                const importanceLayout = {
+                    title: 'Feature Importance (Decision Tree)',
+                    xaxis: { title: 'Feature' },
+                    yaxis: { title: 'Importance' },
+                    height: 250,
+                    margin: { t: 50, b: 60, l: 50, r: 20 }
+                };
+                Plotly.newPlot('feature-importance', [importanceTrace], importanceLayout, { responsive: true });
+
+                // Model comparison chart
+                const comparisonTrace = {
+                    x: data.comparison.models,
+                    y: data.comparison.accuracies.map(a => a * 100),
+                    type: 'bar',
+                    marker: { color: ['#0284c7', '#16a34a'] },
+                    text: data.comparison.accuracies.map(a => `${(a * 100).toFixed(1)}%`),
+                    textposition: 'outside'
+                };
+                
+                const comparisonLayout = {
+                    title: 'Model Comparison - Accuracy',
+                    yaxis: { title: 'Accuracy (%)', range: [0, 100] },
+                    height: 300,
+                    margin: { t: 50, b: 40, l: 50, r: 20 }
+                };
+                Plotly.newPlot('eval-comparison', [comparisonTrace], comparisonLayout, { responsive: true });
+
+                // Confusion Matrices
+                createConfusionMatrix('eval-confusion-lr', results.logistic_regression.confusion_matrix, 'Logistic Regression');
+                createConfusionMatrix('eval-confusion-dt', results.decision_tree.confusion_matrix, 'Decision Tree');
+            } else {
+                document.getElementById('model-lr-results').innerHTML = 
+                    `<div class="text-red-600">Error: ${data.error || 'Failed to train models'}</div>`;
+                document.getElementById('model-dt-results').innerHTML = 
+                    `<div class="text-red-600">Error: ${data.error || 'Failed to train models'}</div>`;
+            }
+        }
+
+        // Create confusion matrix visualization
+        function createConfusionMatrix(elementId, matrix, title) {
+            const trace = {
+                z: matrix,
+                x: ['Predicted No', 'Predicted Yes'],
+                y: ['Actual No', 'Actual Yes'],
+                type: 'heatmap',
+                colorscale: 'Blues',
+                showscale: false,
+                text: matrix.map(row => row.map(val => val.toString())),
+                texttemplate: '%{text}',
+                textfont: { size: 16 }
+            };
+            
+            const layout = {
+                title: `Confusion Matrix: ${title}`,
+                height: 250,
+                margin: { t: 50, b: 60, l: 80, r: 20 }
+            };
+            
+            Plotly.newPlot(elementId, [trace], layout, { responsive: true });
+        }
+
+        // Results
+        async function loadResults() {
+            const data = await fetchData('/results');
+            if (data.success) {
+                const summary = data.summary;
+                
+                const html = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-blue-50 rounded-lg p-4">
+                            <h3 class="font-bold text-blue-800 mb-2">Dataset Summary</h3>
+                            <ul class="text-gray-700 space-y-1">
+                                <li>Total Samples: <strong>${summary.total_samples}</strong></li>
+                                <li>Features Analyzed: <strong>${summary.features_analyzed.length}</strong></li>
+                                <li>Features: ${summary.features_analyzed.join(', ')}</li>
+                            </ul>
+                        </div>
+                        <div class="bg-green-50 rounded-lg p-4">
+                            <h3 class="font-bold text-green-800 mb-2">Defect Distribution</h3>
+                            <ul class="text-gray-700 space-y-1">
+                                <li>Good Products: <strong>${summary.defect_distribution['No'] || 0}</strong></li>
+                                <li>Defective Products: <strong>${summary.defect_distribution['Yes'] || 0}</strong></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="mt-4 bg-yellow-50 rounded-lg p-4">
+                        <h3 class="font-bold text-yellow-800 mb-2">SPC Summary</h3>
+                        <table class="min-w-full">
+                            <thead>
+                                <tr class="border-b">
+                                    <th class="text-left py-2">Feature</th>
+                                    <th class="text-left py-2">Mean</th>
+                                    <th class="text-left py-2">Std Dev</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${Object.entries(summary.spc_summary).map(([feature, stats]) => `
+                                    <tr class="border-b">
+                                        <td class="py-2">${feature}</td>
+                                        <td class="py-2">${stats.mean}</td>
+                                        <td class="py-2">${stats.std}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-4 bg-purple-50 rounded-lg p-4">
+                        <h3 class="font-bold text-purple-800 mb-2">Key Findings</h3>
+                        <ul class="text-gray-700 space-y-1">
+                            <li>✅ Process monitoring using SPC X-bar charts implemented</li>
+                            <li>✅ Defect prediction using ML models (Logistic Regression, Decision Tree)</li>
+                            <li>✅ Multivariate analysis (PCA, K-Means Clustering) completed</li>
+                            <li>✅ Feature importance and model evaluation metrics generated</li>
+                        </ul>
+                    </div>
+                `;
+                
+                document.getElementById('results-content').innerHTML = html;
+            } else {
+                document.getElementById('results-content').innerHTML = 
+                    `<div class="bg-red-100 text-red-800 p-3 rounded-lg">Error: ${data.error || 'Failed to load results'}</div>`;
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadOverview();
+            loadProblem();
+        });
+    </script>
+</body>
+</html>
