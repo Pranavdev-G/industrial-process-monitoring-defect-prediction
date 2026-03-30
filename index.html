@@ -59,18 +59,23 @@
             <nav class="p-4">
                 <ul class="space-y-2">
                     <li>
-                        <a href="#overview" class="sidebar-link active block px-4 py-3 rounded-lg text-gray-700 font-medium" onclick="setActive(this)">
-                            📊 Overview
+                        <a href="#data-upload" class="sidebar-link active block px-4 py-3 rounded-lg text-gray-700 font-medium" onclick="setActive(this)">
+                            Data Upload
                         </a>
                     </li>
                     <li>
-                        <a href="#data-upload" class="sidebar-link block px-4 py-3 rounded-lg text-gray-700 font-medium" onclick="setActive(this)">
-                            📁 Data Upload
+                        <a href="#overview" class="sidebar-link block px-4 py-3 rounded-lg text-gray-700 font-medium" onclick="setActive(this); loadOverview()">
+                            Dataset Overview
                         </a>
                     </li>
                     <li>
-                        <a href="#problem" class="sidebar-link block px-4 py-3 rounded-lg text-gray-700 font-medium" onclick="setActive(this)">
-                            🎯 Problem Definition
+                        <a href="/topic-explanation" class="sidebar-link block px-4 py-3 rounded-lg text-gray-700 font-medium">
+                            Topic Explanation
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/topic-explanation" class="sidebar-link block px-4 py-3 rounded-lg text-gray-700 font-medium">
+                            Problem Statement
                         </a>
                     </li>
                     <li>
@@ -122,32 +127,25 @@
 
             <!-- Main Dashboard Content -->
             <main class="flex-1 overflow-y-auto p-6">
-                <!-- Overview Section -->
-                <section id="overview" class="section-card">
-                    <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                        <span class="mr-2">📊</span> Overview
-                    </h2>
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                        <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white">
-                            <p class="text-sm opacity-80">Total Samples</p>
-                            <p class="text-2xl font-bold" id="overview-samples">--</p>
+                <section class="section-card">
+                    <div class="mb-4">
+                        <h2 class="text-xl font-bold text-gray-800">Problem Definition</h2>
+                        <p class="text-sm text-gray-600 mt-1">This project context stays visible before dataset upload so the user understands the problem, existing industrial solutions, and the unique solution flow.</p>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <div class="rounded-lg bg-blue-50 p-4">
+                            <h3 class="font-bold text-blue-800 mb-2">Problem Statement</h3>
+                            <p class="text-gray-700">Industrial lines generate many process variables, but teams still need an early way to detect instability and predict defective output before losses increase.</p>
                         </div>
-                        <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-4 text-white">
-                            <p class="text-sm opacity-80">Good Products</p>
-                            <p class="text-2xl font-bold" id="overview-good">--</p>
+                        <div class="rounded-lg bg-green-50 p-4">
+                            <h3 class="font-bold text-green-800 mb-2">Available Solutions</h3>
+                            <p class="text-gray-700">Industries usually rely on manual inspection, rule-based quality checks, SPC charts, and standard machine learning classification to monitor process quality.</p>
                         </div>
-                        <div class="bg-gradient-to-r from-red-500 to-red-600 rounded-lg p-4 text-white">
-                            <p class="text-sm opacity-80">Defective Products</p>
-                            <p class="text-2xl font-bold" id="overview-defect">--</p>
-                        </div>
-                        <div class="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-4 text-white">
-                            <p class="text-sm opacity-80">Process Status</p>
-                            <p class="text-2xl font-bold" id="overview-status">--</p>
+                        <div class="rounded-lg bg-amber-50 p-4">
+                            <h3 class="font-bold text-amber-800 mb-2">How I Will Solve It</h3>
+                            <p class="text-gray-700">My solution is unique because it combines preprocessing, SPC, multivariate analysis, clustering, and defect prediction in one guided flow instead of using only a single monitoring method.</p>
                         </div>
                     </div>
-                    <button onclick="loadOverview()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
-                        Load Overview
-                    </button>
                 </section>
 
                 <!-- Data Upload Section -->
@@ -155,7 +153,7 @@
                     <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
                         <span class="mr-2">📁</span> Data Upload
                     </h2>
-                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center mb-4">
+                    <div id="upload-dropzone" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center mb-4">
                         <input type="file" id="fileInput" accept=".csv" class="hidden" onchange="uploadFile(event)">
                         <label for="fileInput" class="cursor-pointer">
                             <div class="text-gray-500">
@@ -168,30 +166,17 @@
                         </label>
                     </div>
                     <div id="upload-status" class="mb-4"></div>
+                    <div id="dataset-change-panel" class="mb-4"></div>
                     <div id="data-preview" class="overflow-x-auto"></div>
+                    <div id="overview" class="mt-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-3">Dataset Overview</h3>
+                        <div id="overview-message" class="mb-4 rounded-lg bg-blue-50 p-4 text-gray-700">
+                            Upload a dataset first. The dataset overview will appear here after you open it.
+                        </div>
+                        <div id="uploaded-overview" class="mt-4"></div>
+                    </div>
                 </section>
 
-                <!-- Problem Definition Section -->
-                <section id="problem" class="section-card">
-                    <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                        <span class="mr-2">🎯</span> Problem Definition
-                    </h2>
-                    <div id="problem-content">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="bg-blue-50 rounded-lg p-4">
-                                <h3 class="font-bold text-blue-800 mb-2">Primary Goal</h3>
-                                <p class="text-gray-700">Predict whether a product will be defective (Yes/No) based on process parameters using machine learning classification models.</p>
-                            </div>
-                            <div class="bg-green-50 rounded-lg p-4">
-                                <h3 class="font-bold text-green-800 mb-2">Monitoring Objective</h3>
-                                <p class="text-gray-700">Monitor industrial process stability using Statistical Process Control (SPC) to detect out-of-control conditions.</p>
-                            </div>
-                        </div>
-                    </div>
-                    <button onclick="loadProblem()" class="mt-4 bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 transition">
-                        Load Problem Definition
-                    </button>
-                </section>
 
                 <!-- SPC Section -->
                 <section id="spc" class="section-card">
@@ -353,27 +338,143 @@
 
         // Overview
         async function loadOverview() {
+            if (!window.datasetUploaded) {
+                document.getElementById('overview-message').innerHTML =
+                    'Upload a dataset first. The dataset overview will appear inside the upload section after you click the overview button.';
+                window.location.hash = '#data-upload';
+                return;
+            }
+
             const data = await fetchData('/results');
             if (data.success) {
                 const summary = data.summary;
-                document.getElementById('overview-samples').textContent = summary.total_samples;
-                
-                const goodCount = summary.defect_distribution['No'] || 0;
-                const defectCount = summary.defect_distribution['Yes'] || 0;
-                
-                document.getElementById('overview-good').textContent = goodCount;
-                document.getElementById('overview-defect').textContent = defectCount;
-                
-                // Calculate defect rate
-                const defectRate = ((defectCount / summary.total_samples) * 100).toFixed(1);
-                document.getElementById('overview-status').textContent = `${defectRate}% Defect Rate`;
+                const overviewContainer = document.getElementById('uploaded-overview');
+                const overviewMessage = document.getElementById('overview-message');
+
+                const goodDetails = summary.good_product_details || [];
+                const defectDetails = summary.defective_product_details || [];
+                const detailColumns = goodDetails[0]
+                    ? Object.keys(goodDetails[0])
+                    : (defectDetails[0] ? Object.keys(defectDetails[0]) : []);
+
+                overviewMessage.innerHTML =
+                    'Dataset uploaded. Click the button again anytime to refresh the overview shown in the upload section.';
+
+                overviewContainer.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                        <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white">
+                            <p class="text-sm opacity-80">Total Samples</p>
+                            <p class="text-2xl font-bold">${summary.total_samples}</p>
+                        </div>
+                        <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-4 text-white">
+                            <p class="text-sm opacity-80">Good Products</p>
+                            <p class="text-2xl font-bold">${summary.defect_distribution['Good'] || 0}</p>
+                        </div>
+                        <div class="bg-gradient-to-r from-red-500 to-red-600 rounded-lg p-4 text-white">
+                            <p class="text-sm opacity-80">Defective Products</p>
+                            <p class="text-2xl font-bold">${summary.defect_distribution['Defective'] || 0}</p>
+                        </div>
+                        <div class="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-4 text-white">
+                            <p class="text-sm opacity-80">Process Status</p>
+                            <p class="text-2xl font-bold">${summary.defect_status.process_status}</p>
+                        </div>
+                    </div>
+                    <div class="bg-green-50 rounded-lg p-4">
+                        <h3 class="font-bold text-green-800 mb-2">Good Product Details</h3>
+                        <p class="text-sm text-green-700 mb-3">Processed dataset records classified as good products after preprocessing.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                            <div class="bg-white rounded-lg p-3 border border-green-100">
+                                <p class="text-xs uppercase text-gray-500">Status</p>
+                                <p class="font-semibold text-gray-800">Good</p>
+                            </div>
+                            <div class="bg-white rounded-lg p-3 border border-green-100">
+                                <p class="text-xs uppercase text-gray-500">Count</p>
+                                <p class="font-semibold text-gray-800">${summary.defect_status.good_products}</p>
+                            </div>
+                            <div class="bg-white rounded-lg p-3 border border-green-100">
+                                <p class="text-xs uppercase text-gray-500">Meaning</p>
+                                <p class="font-semibold text-gray-800">Meets expected quality status</p>
+                            </div>
+                        </div>
+                        ${goodDetails.length ? createTable(goodDetails, detailColumns) : '<p class="text-gray-500">No good product details available.</p>'}
+                    </div>
+                    <div class="bg-red-50 rounded-lg p-4">
+                        <h3 class="font-bold text-red-800 mb-2">Defective Product Details</h3>
+                        <p class="text-sm text-red-700 mb-3">Processed dataset records classified as defective products after preprocessing.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                            <div class="bg-white rounded-lg p-3 border border-red-100">
+                                <p class="text-xs uppercase text-gray-500">Status</p>
+                                <p class="font-semibold text-gray-800">Defective</p>
+                            </div>
+                            <div class="bg-white rounded-lg p-3 border border-red-100">
+                                <p class="text-xs uppercase text-gray-500">Count</p>
+                                <p class="font-semibold text-gray-800">${summary.defect_status.defective_products}</p>
+                            </div>
+                            <div class="bg-white rounded-lg p-3 border border-red-100">
+                                <p class="text-xs uppercase text-gray-500">Rate</p>
+                                <p class="font-semibold text-gray-800">${summary.defect_status.defect_rate}%</p>
+                            </div>
+                        </div>
+                        ${defectDetails.length ? createTable(defectDetails, detailColumns) : '<p class="text-gray-500">No defective product details available.</p>'}
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <h3 class="font-bold text-gray-800 mb-2">Variables Used In Analysis</h3>
+                        <p class="text-sm text-gray-600 mb-3">Short mapping of each processed variable and what it is considered as in the analysis flow.</p>
+                        ${createTable(
+                            (summary.variable_details || []).map(item => ({
+                                Variable: item.label,
+                                ConsideredAs: item.meaning,
+                                Role: item.role,
+                                Sample: item.sample
+                            })),
+                            ['Variable', 'ConsideredAs', 'Role', 'Sample']
+                        )}
+                    </div>
+                `;
+                document.getElementById('uploaded-overview').scrollIntoView({ behavior: 'smooth', block: 'start' });
             } else {
                 console.error('Failed to load overview:', data.error);
-                document.getElementById('overview-samples').textContent = 'Error';
-                document.getElementById('overview-good').textContent = 'Error';
-                document.getElementById('overview-defect').textContent = 'Error';
-                document.getElementById('overview-status').textContent = 'Error';
+                document.getElementById('uploaded-overview').innerHTML =
+                    `<div class="bg-red-100 text-red-800 p-3 rounded-lg">Overview not available. Upload a dataset first.</div>`;
             }
+        }
+
+        function initializeDashboardState() {
+            window.datasetUploaded = false;
+            document.getElementById('upload-status').innerHTML =
+                `<p class="text-gray-500">No dataset uploaded yet.</p>`;
+            document.getElementById('dataset-change-panel').innerHTML = '';
+            document.getElementById('data-preview').innerHTML = '';
+            document.getElementById('uploaded-overview').innerHTML = '';
+            document.getElementById('overview-message').innerHTML =
+                'Upload a dataset first. The dataset overview will appear inside the upload section after you click the overview button.';
+            document.getElementById('fileInput').disabled = false;
+            document.getElementById('upload-dropzone').classList.remove('opacity-60', 'pointer-events-none');
+        }
+
+        function setDatasetLockedState(filename) {
+            window.datasetUploaded = true;
+            document.getElementById('fileInput').disabled = true;
+            document.getElementById('upload-dropzone').classList.add('opacity-60', 'pointer-events-none');
+            document.getElementById('dataset-change-panel').innerHTML = `
+                <div class="flex flex-wrap items-center gap-3 rounded-lg bg-slate-50 p-4 border border-slate-200">
+                    <div>
+                        <p class="font-semibold text-slate-800">Current Dataset</p>
+                        <p class="text-sm text-slate-600">${filename || 'Uploaded dataset is active'}</p>
+                    </div>
+                    <button onclick="changeDataset()" class="bg-slate-700 text-white px-4 py-2 rounded-lg hover:bg-slate-800 transition">
+                        Change Dataset
+                    </button>
+                </div>
+            `;
+        }
+
+        function changeDataset() {
+            const fileInput = document.getElementById('fileInput');
+            fileInput.disabled = false;
+            document.getElementById('upload-dropzone').classList.remove('opacity-60', 'pointer-events-none');
+            fileInput.value = '';
+            fileInput.click();
         }
 
         // Upload file
@@ -396,18 +497,35 @@
 
         if (data.success) {
             document.getElementById("upload-status").innerHTML =
-                `<p class="text-green-600">File uploaded successfully</p>`;
+                `<p class="text-green-600 font-medium">File uploaded successfully</p>`;
 
-            loadOverview();
+            document.getElementById("data-preview").innerHTML =
+                `<div class="mb-3">
+                    <h3 class="font-bold text-gray-800 mb-2">Dataset Preview</h3>
+                    ${createTable(data.preview || [], data.columns || [])}
+                </div>`;
+
+            document.getElementById('uploaded-overview').innerHTML = '';
+            setDatasetLockedState(file.name);
         } else {
             document.getElementById("upload-status").innerHTML =
                 `<p class="text-red-600">${data.error}</p>`;
+            document.getElementById('dataset-change-panel').innerHTML = '';
+            document.getElementById("data-preview").innerHTML = '';
+            document.getElementById('uploaded-overview').innerHTML = '';
         }
 
     } catch (err) {
         document.getElementById("upload-status").innerHTML =
             `<p class="text-red-600">Upload failed</p>`;
+        document.getElementById('dataset-change-panel').innerHTML = '';
+        document.getElementById("data-preview").innerHTML = '';
+        document.getElementById('uploaded-overview').innerHTML = '';
     }
+}
+
+function openTopicExplanation() {
+    window.location.href = '/topic-explanation';
 }
 
         // Problem Definition
@@ -417,9 +535,9 @@ async function loadProblem() {
 
     const container = document.getElementById('problem-content');
 
-    if (!data) {
+    if (!data || data.success === false) {
         container.innerHTML =
-            `<p class="text-red-500">Failed to load problem definition</p>`;
+            `<p class="text-red-500">${data?.goal || 'Failed to load problem definition'}</p>`;
         return;
     }
 
@@ -428,7 +546,7 @@ async function loadProblem() {
             
             <div class="bg-blue-50 rounded-lg p-4">
                 <h3 class="font-bold text-blue-800 mb-2">🎯 Objective</h3>
-                <p>${data.goal || 'Not available'}</p>
+                <p>${data.problem_statement || data.goal || 'Not available'}</p>
             </div>
 
             <div class="bg-green-50 rounded-lg p-4">
@@ -441,6 +559,21 @@ async function loadProblem() {
         <div class="mt-4 bg-red-50 rounded-lg p-4">
             <h3 class="font-bold text-red-800 mb-2">📌 Justification</h3>
             <p>${data.justification || 'Industrial quality improvement and defect reduction'}</p>
+        </div>
+
+        <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-slate-50 rounded-lg p-4">
+                <h3 class="font-bold text-slate-800 mb-2">Total Samples</h3>
+                <p>${data.dataset_highlights?.total_samples ?? 'N/A'}</p>
+            </div>
+            <div class="bg-slate-50 rounded-lg p-4">
+                <h3 class="font-bold text-slate-800 mb-2">Numeric Features</h3>
+                <p>${data.dataset_highlights?.numeric_features ?? 'N/A'}</p>
+            </div>
+            <div class="bg-slate-50 rounded-lg p-4">
+                <h3 class="font-bold text-slate-800 mb-2">Defect Rate</h3>
+                <p>${data.dataset_highlights?.defect_rate ?? 'N/A'}${data.dataset_highlights?.defect_rate !== null && data.dataset_highlights?.defect_rate !== undefined ? '%' : ''}</p>
+            </div>
         </div>
 
         <div class="mt-4 bg-yellow-50 rounded-lg p-4">
@@ -462,10 +595,6 @@ async function loadProblem() {
 
     container.innerHTML = html;
 }
-window.onload = function () {
-    loadProblem();
-};
-
 async function loadFactor() {
     const data = await fetchData("/factor");
 
@@ -881,7 +1010,7 @@ async function loadFactor() {
         async function loadModels() {
             const data = await fetchData('/model');
             if (data.success) {
-                const results = data.results;
+                const results = data.results || data.models;
                 
                 // Logistic Regression results
                 document.getElementById('model-lr-results').innerHTML = `
@@ -987,8 +1116,8 @@ async function loadFactor() {
                         <div class="bg-green-50 rounded-lg p-4">
                             <h3 class="font-bold text-green-800 mb-2">Defect Distribution</h3>
                             <ul class="text-gray-700 space-y-1">
-                                <li>Good Products: <strong>${summary.defect_distribution['No'] || 0}</strong></li>
-                                <li>Defective Products: <strong>${summary.defect_distribution['Yes'] || 0}</strong></li>
+                                <li>Good Products: <strong>${summary.defect_distribution['Good'] || 0}</strong></li>
+                                <li>Defective Products: <strong>${summary.defect_distribution['Defective'] || 0}</strong></li>
                             </ul>
                         </div>
                     </div>
@@ -1033,8 +1162,7 @@ async function loadFactor() {
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
-            loadOverview();
-            loadProblem();
+            initializeDashboardState();
         });
     </script>
 </body>

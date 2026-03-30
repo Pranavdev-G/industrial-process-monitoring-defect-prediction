@@ -26,6 +26,9 @@ app.add_middleware(
 # Global variable to store the dataset
 current_data = None
 data_path = os.path.join(os.path.dirname(__file__), "dataset.csv")
+cluster_model = None
+cluster_scaler = None
+cluster_features = None
 
 def clean_nan(obj):
     """Recursively replace NaN/Inf with None for JSON serialization"""
@@ -52,7 +55,7 @@ def load_data():
             if df.empty:
                 current_data = None
                 return False
-            current_data = df
+            _, _, current_data = preprocess_data(df)
             return True
         current_data = None
         return False
@@ -61,8 +64,235 @@ def load_data():
         current_data = None
         return False
 
-# Load data on startup
-load_data()
+def get_defect_column(df):
+    """Return the defect column name when present, ignoring case."""
+    for col in df.columns:
+        if col.lower() == "defect":
+            return col
+    return None
+
+def split_pascal_case(name):
+    """Convert a compact column name into readable words."""
+    parts = []
+    current = ""
+    for char in name:
+        if char.isupper() and current and not current[-1].isupper():
+            parts.append(current)
+            current = char
+        else:
+            current += char
+    if current:
+        parts.append(current)
+    return " ".join(parts)
+
+def get_variable_meaning(column_name):
+    """Return a short one-word meaning for a known process variable."""
+    meanings = {
+        "ProductionVolume": "Volume",
+        "ProductionCost": "Cost",
+        "SupplierQuality": "Quality",
+        "DeliveryDelay": "Delay",
+        "DefectRate": "Defects",
+        "QualityScore": "Score",
+        "MaintenanceHours": "Maintenance",
+        "DowntimePercentage": "Downtime",
+        "InventoryTurnover": "Inventory",
+        "StockoutRate": "Stockout",
+        "WorkerProductivity": "Productivity",
+        "SafetyIncidents": "Safety",
+        "EnergyConsumption": "Energy",
+        "EnergyEfficiency": "Efficiency",
+        "AdditiveProcessTime": "Time",
+        "AdditiveMaterialCost": "Material",
+        "Defect": "Status"
+    }
+    return meanings.get(column_name, "Metric")
+
+def normalize_defect_value(value):
+    """Map defect values to user-facing labels."""
+    if pd.isna(value):
+        return "Unknown"
+    text = str(value).strip().lower()
+    if text in {"1", "yes", "defect", "defective", "true"}:
+        return "Defective"
+    if text in {"0", "no", "good", "normal", "false"}:
+        return "Good"
+    return str(value)
+
+def build_overview_summary():
+    """Build a processed-data overview for the dashboard."""
+    global current_data
+
+    if current_data is None:
+        return {"success": False, "error": "No data loaded"}
+
+    defect_col = get_defect_column(current_data)
+    numeric_cols = current_data.select_dtypes(include=[np.number]).columns.tolist()
+    feature_cols = [col for col in current_data.columns if col != defect_col]
+    numeric_feature_cols = [col for col in numeric_cols if col != defect_col]
+
+    defect_labels = []
+    if defect_col:
+        defect_labels = current_data[defect_col].apply(normalize_defect_value)
+
+    good_count = int((defect_labels == "Good").sum()) if defect_col else 0
+    defect_count = int((defect_labels == "Defective").sum()) if defect_col else 0
+    total_samples = int(len(current_data))
+    defect_rate = round((defect_count / total_samples) * 100, 2) if total_samples else 0.0
+
+    process_status = "Attention Needed" if defect_rate > 20 else "Stable Trend"
+
+    detail_columns = feature_cols[:4]
+    good_records = []
+    defect_records = []
+    if defect_col:
+        preview_cols = detail_columns + [defect_col]
+        good_records = current_data.loc[defect_labels == "Good", preview_cols].head(5).copy()
+        defect_records = current_data.loc[defect_labels == "Defective", preview_cols].head(5).copy()
+        if not good_records.empty:
+            good_records[defect_col] = "Good"
+        if not defect_records.empty:
+            defect_records[defect_col] = "Defective"
+
+    variable_details = []
+    for col in current_data.columns:
+        series = current_data[col]
+        variable_details.append({
+            "name": col,
+            "label": split_pascal_case(col),
+            "type": "Numeric" if pd.api.types.is_numeric_dtype(series) else "Categorical",
+            "role": "Target" if col == defect_col else "Input",
+            "meaning": get_variable_meaning(col),
+            "sample": str(series.iloc[0]) if len(series) > 0 else "N/A"
+        })
+
+    spc_summary = {}
+    for col in numeric_feature_cols:
+        data = current_data[col].dropna()
+        if len(data) > 0:
+            spc_summary[col] = {
+                "mean": f"{data.mean():.2f}",
+                "std": f"{data.std():.2f}" if len(data) > 1 else "0.00"
+            }
+
+    return {
+        "success": True,
+        "summary": {
+            "total_samples": total_samples,
+            "features_analyzed": feature_cols,
+            "numeric_features": numeric_feature_cols,
+            "defect_distribution": {
+                "Good": good_count,
+                "Defective": defect_count
+            },
+            "defect_status": {
+                "good_products": good_count,
+                "defective_products": defect_count,
+                "defect_rate": defect_rate,
+                "process_status": process_status
+            },
+            "good_product_details": clean_nan(good_records.to_dict(orient="records")) if defect_col else [],
+            "defective_product_details": clean_nan(defect_records.to_dict(orient="records")) if defect_col else [],
+            "variable_details": variable_details,
+            "spc_summary": spc_summary
+        }
+    }
+
+def build_problem_payload():
+    """Build topic explanation content using the loaded dataset."""
+    global current_data
+
+    if current_data is None:
+        return {
+            "success": False,
+            "goal": "No data loaded. Please upload a dataset.",
+            "monitoring": "Upload a dataset to view the topic explanation.",
+            "justification": "The page becomes fully informative after a dataset is uploaded.",
+            "features": [],
+            "methods": [],
+            "problem_statement": "Upload a production dataset to generate the project-specific explanation.",
+            "industrial_solutions": [],
+            "details": [],
+            "dataset_highlights": {
+                "total_samples": 0,
+                "numeric_features": 0,
+                "defect_rate": None
+            }
+        }
+
+    numeric_cols = current_data.select_dtypes(include=[np.number]).columns.tolist()
+    defect_col = get_defect_column(current_data)
+    feature_cols = [col for col in numeric_cols if col.lower() != "defect"]
+
+    defect_rate = None
+    class_balance = {}
+    if defect_col:
+        defect_counts = current_data[defect_col].value_counts(dropna=False).to_dict()
+        class_balance = {str(k): int(v) for k, v in defect_counts.items()}
+        total = len(current_data)
+        defective = class_balance.get("Yes", 0) + class_balance.get("1", 0) + class_balance.get("Defective", 0)
+        if total > 0:
+            defect_rate = round((defective / total) * 100, 2)
+
+    problem_statement = (
+        "Industrial manufacturing lines generate many process measurements, but operators still need a faster way "
+        "to identify unstable conditions and predict whether an output unit may become defective."
+    )
+
+    industrial_solutions = [
+        {
+            "title": "Statistical process monitoring on the shop floor",
+            "description": "Use SPC charts to detect drift, unusual variation, and out-of-control points before defects spread across the batch."
+        },
+        {
+            "title": "Defect prediction before final inspection",
+            "description": "Use classification models on process parameters so teams can flag risky samples earlier and reduce rework or scrap."
+        },
+        {
+            "title": "Root-cause support for engineers",
+            "description": "Use PCA, clustering, and feature analysis to understand which process variables move together and which ones influence quality most."
+        }
+    ]
+
+    details = [
+        {
+            "title": "Problem Statement",
+            "content": "Build a monitoring and prediction workflow that combines process stability analysis with machine learning to reduce defective production."
+        },
+        {
+            "title": "Industrial Relevance",
+            "content": "This supports quality assurance teams in manufacturing, process industries, and automated plants where early detection directly lowers waste, downtime, and customer complaints."
+        },
+        {
+            "title": "Expected Outcome",
+            "content": "Operators should be able to monitor process health, compare analytical methods, and use data-driven evidence to take corrective action faster."
+        }
+    ]
+
+    return {
+        "success": True,
+        "goal": "Develop a predictive system to classify defective products using machine learning.",
+        "monitoring": "Monitor industrial process stability using statistical process control and multivariate analysis.",
+        "justification": "Helps industries reduce defects, improve consistency, and support preventive action before failures escalate.",
+        "features": feature_cols,
+        "methods": [
+            "EDA",
+            "SPC",
+            "PCA",
+            "Factor Analysis",
+            "Clustering",
+            "Machine Learning Models"
+        ],
+        "problem_statement": problem_statement,
+        "industrial_solutions": industrial_solutions,
+        "details": details,
+        "dataset_highlights": {
+            "total_samples": int(len(current_data)),
+            "numeric_features": int(len(feature_cols)),
+            "defect_rate": defect_rate,
+            "class_balance": class_balance
+        }
+    }
 
 @app.get("/", response_class=HTMLResponse)
 def home():
@@ -73,6 +303,15 @@ def home():
         with open(html_path, 'r', encoding='utf-8') as f:
             return HTMLResponse(content=f.read())
     return HTMLResponse(content="<h1>index.html not found</h1><p>Please ensure index.html is in the same directory.</p>")
+
+@app.get("/topic-explanation", response_class=HTMLResponse)
+def topic_explanation_page():
+    """Serve the topic explanation page."""
+    html_path = os.path.join(os.path.dirname(__file__), "topic_explanation.html")
+    if os.path.exists(html_path):
+        with open(html_path, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    return HTMLResponse(content="<h1>topic_explanation.html not found</h1>")
 
 @app.get("/favicon.ico")
 def favicon():
@@ -124,40 +363,12 @@ async def upload_file(file: UploadFile = File(...)):
 def get_problem():
     """Get problem definition"""
     global current_data
-    if current_data is None:
-        load_data()
-    
-    if current_data is None:
-        return {
-            "goal": "No data loaded. Please upload a dataset.",
-            "monitoring": "N/A",
-            "features": [],
-            "methods": []
-        }
-    
-    numeric_cols = current_data.select_dtypes(include=[np.number]).columns.tolist()
-    
-    return {
-    "goal": "Develop a predictive system to classify defective products using machine learning",
-    "justification": "Helps industries reduce defects and improve quality",
-    "objective": "Analyze process parameters and predict defects",
-    "methods": [
-        "EDA",
-        "SPC",
-        "PCA",
-        "Factor Analysis",
-        "Clustering",
-        "Machine Learning Models"
-    ]
-}
+    return build_problem_payload()
 
 @app.get("/spc")
 def get_spc():
     """Get SPC analysis results"""
     global current_data
-    if current_data is None:
-        load_data()
-    
     if current_data is None:
         return {"success": False, "error": "No data loaded"}
     
@@ -292,9 +503,6 @@ def get_pca():
     """Get PCA analysis results"""
     global current_data
     if current_data is None:
-        load_data()
-    
-    if current_data is None:
         return {"success": False, "error": "No data loaded"}
     
     numeric_cols = current_data.select_dtypes(include=[np.number]).columns.tolist()
@@ -368,9 +576,6 @@ def get_cluster(n_clusters: int = Query(default=3, ge=2, le=10)):
     global current_data
     global cluster_model, cluster_scaler, cluster_features
 
-    if current_data is None:
-        load_data()
-    
     if current_data is None:
         return {"success": False, "error": "No data loaded"}
     
@@ -448,9 +653,6 @@ def get_model():
     """Train and evaluate models"""
     global current_data
     if current_data is None:
-        load_data()
-    
-    if current_data is None:
         return {"success": False, "error": "No data loaded"}
     
     if 'Defect' not in current_data.columns:
@@ -501,62 +703,41 @@ def get_model():
     feature_importance = {feat: float(imp) for feat, imp in zip(feature_cols, dt_model.feature_importances_)}
     
     return {
-    "success": True,
-    "models": {
-        "logistic_regression": {
-            "accuracy": lr_accuracy,
-            "confusion_matrix": lr_cm
+        "success": True,
+        "results": {
+            "logistic_regression": {
+                "accuracy": lr_accuracy,
+                "confusion_matrix": lr_cm
+            },
+            "decision_tree": {
+                "accuracy": dt_accuracy,
+                "confusion_matrix": dt_cm
+            }
         },
-        "decision_tree": {
-            "accuracy": dt_accuracy,
-            "confusion_matrix": dt_cm
+        "models": {
+            "logistic_regression": {
+                "accuracy": lr_accuracy,
+                "confusion_matrix": lr_cm
+            },
+            "decision_tree": {
+                "accuracy": dt_accuracy,
+                "confusion_matrix": dt_cm
+            }
+        },
+        "feature_importance": feature_importance,
+        "comparison": {
+            "best_model": "Logistic Regression" if lr_accuracy > dt_accuracy else "Decision Tree",
+            "difference": abs(lr_accuracy - dt_accuracy),
+            "models": ["Logistic Regression", "Decision Tree"],
+            "accuracies": [lr_accuracy, dt_accuracy]
         }
-    },
-    "comparison": {
-        "best_model": "Logistic Regression" if lr_accuracy > dt_accuracy else "Decision Tree",
-        "difference": abs(lr_accuracy - dt_accuracy)
     }
-}
 
 @app.get("/results")
 def get_results():
     """Get final results summary"""
     global current_data
-    if current_data is None:
-        load_data()
-    
-    if current_data is None:
-        return {"success": False, "error": "No data loaded"}
-    
-    numeric_cols = current_data.select_dtypes(include=[np.number]).columns.tolist()
-    feature_cols = [col for col in numeric_cols if col.lower() != 'defect']
-    
-    total_samples = len(current_data)
-    
-    if 'Defect' in current_data.columns:
-        defect_dist = current_data['Defect'].value_counts().to_dict()
-        defect_distribution = {str(k): int(v) for k, v in defect_dist.items()}
-    else:
-        defect_distribution = {"No": total_samples, "Yes": 0}
-    
-    spc_summary = {}
-    for col in feature_cols:
-        data = current_data[col].dropna()
-        if len(data) > 0:
-            spc_summary[col] = {
-                "mean": f"{data.mean():.2f}",
-                "std": f"{data.std():.2f}" if len(data) > 1 else "0.00"
-            }
-    
-    return {
-        "success": True,
-        "summary": {
-            "total_samples": total_samples,
-            "features_analyzed": feature_cols,
-            "defect_distribution": defect_distribution,
-            "spc_summary": spc_summary
-        }
-    }
+    return build_overview_summary()
 
 @app.get("/insights")
 def insights():
