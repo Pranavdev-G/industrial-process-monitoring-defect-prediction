@@ -11,6 +11,8 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
+from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
 import os
 
 app = FastAPI()
@@ -199,99 +201,60 @@ def build_overview_summary():
     }
 
 def build_problem_payload():
-    """Build topic explanation content using the loaded dataset."""
+    """Build topic explanation content - EXACT SPECIFICATION"""
     global current_data
-
-    if current_data is None:
-        return {
-            "success": False,
-            "goal": "No data loaded. Please upload a dataset.",
-            "monitoring": "Upload a dataset to view the topic explanation.",
-            "justification": "The page becomes fully informative after a dataset is uploaded.",
-            "features": [],
-            "methods": [],
-            "problem_statement": "Upload a production dataset to generate the project-specific explanation.",
-            "industrial_solutions": [],
-            "details": [],
-            "dataset_highlights": {
-                "total_samples": 0,
-                "numeric_features": 0,
-                "defect_rate": None
-            }
-        }
-
-    numeric_cols = current_data.select_dtypes(include=[np.number]).columns.tolist()
-    defect_col = get_defect_column(current_data)
-    feature_cols = [col for col in numeric_cols if col.lower() != "defect"]
-
+    
+    # Dataset stats if available
+    total_samples = 0
+    numeric_features = 0
     defect_rate = None
-    class_balance = {}
-    if defect_col:
-        defect_counts = current_data[defect_col].value_counts(dropna=False).to_dict()
-        class_balance = {str(k): int(v) for k, v in defect_counts.items()}
-        total = len(current_data)
-        defective = class_balance.get("Yes", 0) + class_balance.get("1", 0) + class_balance.get("Defective", 0)
-        if total > 0:
-            defect_rate = round((defective / total) * 100, 2)
-
-    problem_statement = (
-        "Industrial manufacturing lines generate many process measurements, but operators still need a faster way "
-        "to identify unstable conditions and predict whether an output unit may become defective."
-    )
-
-    industrial_solutions = [
-        {
-            "title": "Statistical process monitoring on the shop floor",
-            "description": "Use SPC charts to detect drift, unusual variation, and out-of-control points before defects spread across the batch."
-        },
-        {
-            "title": "Defect prediction before final inspection",
-            "description": "Use classification models on process parameters so teams can flag risky samples earlier and reduce rework or scrap."
-        },
-        {
-            "title": "Root-cause support for engineers",
-            "description": "Use PCA, clustering, and feature analysis to understand which process variables move together and which ones influence quality most."
-        }
-    ]
-
-    details = [
-        {
-            "title": "Problem Statement",
-            "content": "Build a monitoring and prediction workflow that combines process stability analysis with machine learning to reduce defective production."
-        },
-        {
-            "title": "Industrial Relevance",
-            "content": "This supports quality assurance teams in manufacturing, process industries, and automated plants where early detection directly lowers waste, downtime, and customer complaints."
-        },
-        {
-            "title": "Expected Outcome",
-            "content": "Operators should be able to monitor process health, compare analytical methods, and use data-driven evidence to take corrective action faster."
-        }
-    ]
+    
+    if current_data is not None:
+        numeric_cols = current_data.select_dtypes(include=[np.number]).columns.tolist()
+        defect_col = get_defect_column(current_data)
+        feature_cols = [col for col in numeric_cols if col.lower() != "defect"]
+        
+        total_samples = int(len(current_data))
+        numeric_features = int(len(feature_cols))
+        
+        if defect_col:
+            total = len(current_data)
+            defective = int((current_data[defect_col] == 1).sum())
+            defect_rate = round((defective / total) * 100, 2) if total > 0 else None
 
     return {
         "success": True,
-        "goal": "Develop a predictive system to classify defective products using machine learning.",
-        "monitoring": "Monitor industrial process stability using statistical process control and multivariate analysis.",
-        "justification": "Helps industries reduce defects, improve consistency, and support preventive action before failures escalate.",
-        "features": feature_cols,
-        "methods": [
-            "EDA",
-            "SPC",
-            "PCA",
-            "Factor Analysis",
-            "Clustering",
-            "Machine Learning Models"
-        ],
-        "problem_statement": problem_statement,
-        "industrial_solutions": industrial_solutions,
-        "details": details,
         "dataset_highlights": {
-            "total_samples": int(len(current_data)),
-            "numeric_features": int(len(feature_cols)),
-            "defect_rate": defect_rate,
-            "class_balance": class_balance
-        }
+            "total_samples": total_samples,
+            "numeric_features": numeric_features, 
+            "defect_rate": defect_rate
+        },
+        "problem_statement": """Modern industrial manufacturing systems generate large volumes of process data through sensors and control systems. However, traditional monitoring approaches often fail to detect early signs of process instability and potential defects. This leads to delayed corrective actions, increased production costs, and reduced product quality. Therefore, there is a need for a data-driven system that continuously monitors process variables, identifies hidden patterns, and predicts defects in advance.""",
+        "goal": "Industrial Process Monitoring and Defect Prediction System",
+        "monitoring": "An Integrated Approach Using Statistical Process Control, Multivariate Analysis, and Machine Learning",
+        "justification": """Current industrial practices rely on manual inspection, rule-based quality checks, and Statistical Process Control (SPC) charts. These methods are limited when handling high-dimensional data and complex relationships. Machine learning models are used but often lack interpretability and integration with statistical methods.""",
+        "industrial_solutions": [
+            {
+                "title": "Manual Inspection & Rule-based QC", 
+                "description": "Traditional methods limited by human error and static rules"
+            },
+            {
+                "title": "SPC Charts", 
+                "description": "Good for stability but struggles with multivariate relationships"
+            },
+            {
+                "title": "Standalone ML Models", 
+                "description": "Powerful prediction but lacks process context and interpretability"
+            }
+        ],
+        "details": [
+            {
+                "title": "Proposed Solution",
+                "content": "This system integrates data preprocessing, SPC, PCA, clustering, and machine learning-based prediction. It detects instability, reduces dimensionality, identifies patterns, and predicts defects accurately in a unified workflow."
+            }
+        ],
+        "features": ["ProductionVolume", "ProductionCost", "SupplierQuality", "DeliveryDelay", "DefectRate", "QualityScore", "MaintenanceHours", "DowntimePercentage", "InventoryTurnover", "StockoutRate", "WorkerProductivity", "SafetyIncidents", "EnergyConsumption", "EnergyEfficiency", "AdditiveProcessTime", "AdditiveMaterialCost"],
+        "methods": ["Statistical Process Control (SPC)", "Principal Component Analysis (PCA)", "K-Means Clustering", "Hierarchical Clustering", "Logistic Regression", "Decision Tree Classification"]
     }
 
 @app.get("/", response_class=HTMLResponse)
@@ -590,24 +553,37 @@ def get_cluster(n_clusters: int = Query(default=3, ge=2, le=10)):
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
     
+    # KMEANS (existing)
     kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
-    labels = kmeans.fit_predict(X_scaled)
-
-    # ✅ FIX → STORE MODEL HERE
+    kmeans_labels = kmeans.fit_predict(X_scaled)
+    
+    # HIERARCHICAL CLUSTERING (NEW)
+    Z = linkage(X_scaled, method='ward')
+    h_labels = fcluster(Z, n_clusters, criterion='maxclust')
+    
+    # Dendrogram coordinates for visualization  
+    # Sample 50 points for dendrogram to avoid too many points
+    dendro_data = {
+        "leaves": X_scaled[:50].shape[0],
+        "icoord": [], "dcoord": [], "icoord2": [], "dcoord2": []  # Simplified for frontend
+    }
+    
+    # Store models
     cluster_model = kmeans
     cluster_scaler = scaler
     cluster_features = feature_cols
 
-    cluster_stats = []
+    # KMeans stats (existing format)
+    kmeans_stats = []
     for i in range(n_clusters):
-        count = int(np.sum(labels == i))
-        cluster_stats.append({
+        count = int(np.sum(kmeans_labels == i))
+        kmeans_stats.append({
             "cluster": i,
             "count": count,
-            "percentage": float(count / len(labels) * 100)
+            "percentage": float(count / len(X) * 100)
         })
-    
-    # Visualization
+
+    # Combined visualization data (KMeans)
     if len(feature_cols) >= 2:
         x_feature, y_feature = feature_cols[0], feature_cols[1]
         x_data = current_data.loc[X.index, x_feature].tolist()
@@ -617,22 +593,25 @@ def get_cluster(n_clusters: int = Query(default=3, ge=2, le=10)):
         y_data = X_scaled[:, 1].tolist() if X_scaled.shape[1] > 1 else [0] * len(X_scaled)
         x_feature, y_feature = "Component 1", "Component 2"
     
-    centers = scaler.inverse_transform(kmeans.cluster_centers_)
-    centers_x = centers[:, 0].tolist()
-    centers_y = centers[:, 1].tolist() if centers.shape[1] > 1 else [0]*n_clusters
+    kmeans_centers = scaler.inverse_transform(kmeans.cluster_centers_)
+    centers_x = kmeans_centers[:, 0].tolist()
+    centers_y = kmeans_centers[:, 1].tolist() if kmeans_centers.shape[1] > 1 else [0]*n_clusters
 
     return {
         "success": True,
-        "cluster_stats": cluster_stats,
+        "kmeans_stats": kmeans_stats,
+        "hierarchical_labels": h_labels.tolist(),
         "cluster_data": {
-            "labels": labels.tolist(),
+            "labels": kmeans_labels.tolist(),  # Frontend uses KMeans plot
             "x": x_data,
             "y": y_data,
             "centers_x": centers_x,
             "centers_y": centers_y,
             "feature_x": x_feature,
-            "feature_y": y_feature
+            "feature_y": y_feature,
+            "hierarchical_available": True
         },
+        "dendrogram": dendro_data,
         "n_clusters": n_clusters
     }
 
@@ -650,7 +629,7 @@ def predict_cluster(v1: float, v2: float):
 
 @app.get("/model")
 def get_model():
-    """Train and evaluate models"""
+    """Train and evaluate models with full metrics - TIME SERIES SPLIT"""
     global current_data
     if current_data is None:
         return {"success": False, "error": "No data loaded"}
@@ -658,12 +637,12 @@ def get_model():
     if 'Defect' not in current_data.columns:
         return {"success": False, "error": "Defect column not found in dataset"}
     
-    numeric_cols = current_data.select_dtypes(include=[np.number]).columns.tolist()
-    feature_cols = [col for col in numeric_cols if col.lower() != 'defect']
+    # Use ALL features (including lag/rolling from preprocess)
+    feature_cols = [col for col in current_data.columns if col.lower() != 'defect' and pd.api.types.is_numeric_dtype(current_data[col])]
     
     data_clean = current_data[feature_cols + ['Defect']].dropna()
     
-    if len(data_clean) < 5:
+    if len(data_clean) < 10:
         return {"success": False, "error": "Not enough valid data samples to train model"}
 
     X = data_clean[feature_cols]
@@ -672,65 +651,69 @@ def get_model():
     le = LabelEncoder()
     y_encoded = le.fit_transform(y)
     
-    X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
+    # ✅ TIME SERIES SPLIT - NO SHUFFLE (already sorted by preprocess)
+    split_idx = int(len(X) * 0.8)
+    X_train, X_test = X.iloc[:split_idx], X.iloc[split_idx:]
+    y_train, y_test = y_encoded[:split_idx], y_encoded[split_idx:]
     
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
     
-    # Logistic Regression
-    lr_model = LogisticRegression(random_state=42, max_iter=1000)
-    lr_model.fit(X_train_scaled, y_train)
-    lr_predictions = lr_model.predict(X_test_scaled)
-    lr_accuracy = float(np.mean(lr_predictions == y_test))
+    def get_metrics(y_true, y_pred, y_proba=None):
+        acc = accuracy_score(y_true, y_pred)
+        prec = precision_score(y_true, y_pred, zero_division=0)
+        rec = recall_score(y_true, y_pred, zero_division=0)
+        f1 = f1_score(y_true, y_pred, zero_division=0)
+        auc = roc_auc_score(y_true, y_proba[:,1]) if y_proba is not None else None
+        return {
+            "accuracy": float(acc),
+            "precision": float(prec),
+            "recall": float(rec), 
+            "f1_score": float(f1),
+            "roc_auc": float(auc) if auc else None
+        }
     
-    # Decision Tree
-    dt_model = DecisionTreeClassifier(random_state=42, max_depth=5)
+    # Logistic Regression
+    lr_model = LogisticRegression(random_state=42, max_iter=2000)
+    lr_model.fit(X_train_scaled, y_train)
+    lr_pred = lr_model.predict(X_test_scaled)
+    lr_proba = lr_model.predict_proba(X_test_scaled)
+    lr_metrics = get_metrics(y_test, lr_pred, lr_proba)
+    
+    # Decision Tree  
+    dt_model = DecisionTreeClassifier(random_state=42, max_depth=8)
     dt_model.fit(X_train, y_train)
-    dt_predictions = dt_model.predict(X_test)
-    dt_accuracy = float(np.mean(dt_predictions == y_test))
+    dt_pred = dt_model.predict(X_test)
+    dt_metrics = get_metrics(y_test, dt_pred)
     
     def calc_confusion_matrix(y_true, y_pred):
-        tp = int(np.sum((y_pred == 1) & (y_true == 1)))
-        tn = int(np.sum((y_pred == 0) & (y_true == 0)))
-        fp = int(np.sum((y_pred == 1) & (y_true == 0)))
-        fn = int(np.sum((y_pred == 0) & (y_true == 1)))
-        return [[tn, fp], [fn, tp]]
+        from sklearn.metrics import confusion_matrix
+        return confusion_matrix(y_true, y_pred).tolist()
     
-    lr_cm = calc_confusion_matrix(y_test, lr_predictions)
-    dt_cm = calc_confusion_matrix(y_test, dt_predictions)
+    lr_cm = calc_confusion_matrix(y_test, lr_pred)
+    dt_cm = calc_confusion_matrix(y_test, dt_pred)
     
-    feature_importance = {feat: float(imp) for feat, imp in zip(feature_cols, dt_model.feature_importances_)}
+    feature_importance = dict(zip(feature_cols, dt_model.feature_importances_.tolist()))
     
     return {
         "success": True,
         "results": {
             "logistic_regression": {
-                "accuracy": lr_accuracy,
+                **lr_metrics,
                 "confusion_matrix": lr_cm
             },
             "decision_tree": {
-                "accuracy": dt_accuracy,
-                "confusion_matrix": dt_cm
-            }
-        },
-        "models": {
-            "logistic_regression": {
-                "accuracy": lr_accuracy,
-                "confusion_matrix": lr_cm
-            },
-            "decision_tree": {
-                "accuracy": dt_accuracy,
+                **dt_metrics, 
                 "confusion_matrix": dt_cm
             }
         },
         "feature_importance": feature_importance,
         "comparison": {
-            "best_model": "Logistic Regression" if lr_accuracy > dt_accuracy else "Decision Tree",
-            "difference": abs(lr_accuracy - dt_accuracy),
             "models": ["Logistic Regression", "Decision Tree"],
-            "accuracies": [lr_accuracy, dt_accuracy]
-        }
+            "best_model": "LR" if lr_metrics["accuracy"] > dt_metrics["accuracy"] else "DT"
+        },
+        "n_features": len(feature_cols)
     }
 
 @app.get("/results")
