@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Machine Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="mx-auto max-w-5xl p-6">
+        <div class="mb-6 rounded-xl bg-white p-4 shadow">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-800">Machine Analysis</h1>
+                    <p class="text-sm text-gray-500">Real-time analysis using Temperature, Pressure, and Speed</p>
+                </div>
+                <div class="flex gap-2">
+                    <a href="/" class="rounded-lg bg-slate-700 px-4 py-2 text-white hover:bg-slate-800">Dashboard</a>
+                    <a href="/topic-explanation" class="rounded-lg bg-cyan-600 px-4 py-2 text-white hover:bg-cyan-700">Problem Definition</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="rounded-xl bg-white p-6 shadow">
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div>
+                    <label for="temperature-slider" class="mb-1 block text-sm font-medium text-gray-700">
+                        Temperature: <span id="temperature-value">50</span>
+                    </label>
+                    <input id="temperature-slider" type="range" min="0" max="100" value="50" class="w-full">
+                </div>
+                <div>
+                    <label for="pressure-slider" class="mb-1 block text-sm font-medium text-gray-700">
+                        Pressure: <span id="pressure-value">50</span>
+                    </label>
+                    <input id="pressure-slider" type="range" min="0" max="100" value="50" class="w-full">
+                </div>
+                <div>
+                    <label for="speed-slider" class="mb-1 block text-sm font-medium text-gray-700">
+                        Speed: <span id="speed-value">50</span>
+                    </label>
+                    <input id="speed-slider" type="range" min="0" max="100" value="50" class="w-full">
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <button id="result-btn" class="rounded-lg bg-cyan-600 px-4 py-2 text-white hover:bg-cyan-700">
+                    Result
+                </button>
+            </div>
+            <p id="result-sentence" class="mt-3 text-sm font-medium text-slate-700"></p>
+
+            <div class="mt-5 rounded-lg bg-gray-50 p-4">
+                <canvas id="analysis-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let chart = null;
+        let timer = null;
+
+        function getInputs() {
+            return {
+                temperature: Number(document.getElementById('temperature-slider').value),
+                pressure: Number(document.getElementById('pressure-slider').value),
+                speed: Number(document.getElementById('speed-slider').value)
+            };
+        }
+
+        function updateLabels() {
+            const data = getInputs();
+            document.getElementById('temperature-value').textContent = data.temperature;
+            document.getElementById('pressure-value').textContent = data.pressure;
+            document.getElementById('speed-value').textContent = data.speed;
+        }
+
+        async function analyze() {
+            updateLabels();
+            const response = await fetch('/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(getInputs())
+            });
+            const result = await response.json();
+            if (!result.success) return;
+            document.getElementById('result-sentence').textContent = result.result_sentence || '';
+            drawChart(result.time, result.value);
+        }
+
+        function drawChart(labels, values) {
+            const canvas = document.getElementById('analysis-chart');
+            if (chart) chart.destroy();
+            chart = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Calculated Value',
+                        data: values,
+                        borderColor: '#0284c7',
+                        backgroundColor: 'rgba(2,132,199,0.15)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { title: { display: true, text: 'Time' } },
+                        y: { title: { display: true, text: 'Value' } }
+                    }
+                }
+            });
+        }
+
+        function scheduleAnalyze() {
+            if (timer) clearTimeout(timer);
+            timer = setTimeout(analyze, 120);
+        }
+
+        document.getElementById('temperature-slider').addEventListener('input', scheduleAnalyze);
+        document.getElementById('pressure-slider').addEventListener('input', scheduleAnalyze);
+        document.getElementById('speed-slider').addEventListener('input', scheduleAnalyze);
+        document.getElementById('result-btn').addEventListener('click', analyze);
+
+        analyze();
+    </script>
+</body>
+</html>
